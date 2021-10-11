@@ -1,0 +1,187 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+Given two words (beginWord and endWord), and a dictionary's word list, find the length of shortest transformation sequence from beginWord to endWord, such that:
+\begin{itemize}
+\item Only one letter can be changed at a time.
+\item Each transformed word must exist in the word list.
+\end{itemize}
+
+\bf{Note}
+
+\begin{itemize}
+\item Return 0 if there is no such transformation sequence.
+\item All worlds have the same length.
+\item All words contain only lowercase alphabetic characters.
+\item You may assume no duplicates in the word list.
+\item You may assume beginWord and endWord are non-empty and are not the same.
+\end{itemize}
+
+\subsection{Example}
+\begin{verbatim}
+Input:
+beginWord=``hit''
+endWord=``cog''
+wordList = [``hot'', ``dot'', ``dog'', ``lot'', ``log'', ``cog'']
+Output: 5
+Explanation: As one shorted transformation is hit -> hot -> dot -> dog -> cog,
+return its length 5.
+\end{verbatim}
+
+\section{Solution}
+We can model this problem as finding a shortest path in a directed graph. Each word is
+a node in the graph. Two words that are only differ in one character have two edges
+between them. The weight on the edge is 1. The number of different characters
+between two words is called the word distance.
+
+We model a graph using the adjacent matrix. The row index and the column index
+of the matrix correspond to the indices of the input word list [[wordList]]. The
+value at [i][j] in the matrix is 1 if the ith word and jth are connected (so as
+value at [j][i]). Otherwise it is 0.
+
+<<Word Distance Definition>>=
+func WordDistance(w1 string, w2 string) int {
+    r1 := []rune(w1)
+    r2 := []rune(w2)
+    var d int = 0
+
+    for i := 0; i < len(r1); i++ {
+        if r1[i] != r2[i] {
+            d++
+        }
+    }
+    return d
+}
+@ %def WordDistance
+The function [[WordDistance]] returns the distance between two words [[w1]] and
+[[w2]].
+
+<<Graph Construction Algorithm>>=
+func ConstructGraph(wordList []string) [][]int {
+    graph := make([][]int, len(wordList))
+
+    for i := 0; i < len(wordList); i++ {
+        graph[i] = make([]int, len(wordList))
+    }
+
+    for  i := 0; i < len(wordList); i++ {
+        for j := 0; j < len(wordList); j++ {
+            if i == j {
+                graph[i][i] = 0
+            }
+            d2 := WordDistance(wordList[i], wordList[j])
+            if d2 == 1 {
+                // If two words only differ in one character,
+                // they are connected.
+                graph[i][j] = 1
+            } else {
+                graph[i][j] = 0
+            }
+        }
+    }
+    return graph
+}
+@ %def ConstructGraph
+[[ConstructGraph]] construct a graph from the input [[wordList]] and return it
+as a two dimensional slice.
+
+<<Shortest Path Algorithm>>=
+func MinNode(dist []int, visited []bool) int {
+    // Find the smallest distance node among unvisited
+    // nodes.
+    // The distance of this node to the source is final.
+    min_dist := math.MaxInt32
+    min_node := -1
+
+    for i := 0; i < len(dist); i++ {
+        if visited[i] == false && dist[i] < min_dist {
+            min_dist = dist[i]
+            min_node = i
+        }
+    }
+
+    return min_node
+}
+
+func ShortestPath(begin int, end int, graph [][]int) int {
+    dist := make([]int, len(graph))
+    visited := make([]bool, len(graph))
+
+    for i := 0; i < len(dist); i++ {
+        dist[i] = math.MaxInt32
+        visited[i] = false
+    }
+
+    dist[begin] = 0
+
+    for i := 0; i < len(graph); i++ {
+        min_node :=  MinNode(dist, visited)
+        if min_node == -1 {
+            // The graph is disconnected in this case.
+            return 0;
+        }
+
+        visited[min_node] = true
+
+        if min_node == end {
+            // The disstance to the end node is finalized.
+            // Return it.
+            return dist[end]
+        }
+
+        for j := 0; j < len(graph); j++ {
+            if !visited[j] && graph[min_node][j] != 0 && graph[min_node][j] + dist[min_node] < dist[j] {
+                dist[j] = graph[min_node][j] + dist[min_node]
+            }
+        }
+    }
+
+    return 0
+}
+@ %def MinNode ShortestPath
+These two functions implement the Dijsktra's Algorithm. [[ShortestPath]] finds
+the shortest path length between two nodes [[begin]] and [[end]].
+
+Putting everything together, we have the following algorithm:
+<<*>>=
+import (
+    "math"
+)
+
+<<Word Distance Definition>>
+
+<<Graph Construction Algorithm>>
+
+<<Shortest Path Algorithm>>
+
+func ladderLength(beginWord string, endWord string, wordList []string) int {
+    begin, end := -1, -1
+    for pos, word := range wordList {
+        if word == beginWord {
+            begin = pos
+        }
+        if word == endWord {
+            end = pos
+        }
+    }
+
+    if begin == -1 {
+        // If the begin word is not part of the word list,
+        // put it into the list.
+        append(wordList, beginWord)
+        begin == len(wordList) - 1
+    }
+
+    if end == -1 {
+        return 0
+    }
+
+    graph := ConstructGraph(wordList)
+    len := ShortestPath(begin, end, graph)
+    if len == 0 {
+        return len
+    } else {
+        return len + 1
+    }
+}

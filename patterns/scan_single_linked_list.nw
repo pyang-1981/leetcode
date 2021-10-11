@@ -1,0 +1,39 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Scan an array (or double linked list) from left to right and from right to left at
+the same time, and meet in the middle.
+
+
+\section{Pattern}
+
+For this task, we maintain two indices, one is used to scan from left to
+right,and the other one is used to scan from right to left. The first index is
+initialized to 0, and increased by 1 for every step; the second index is initialized to size -
+1, and decreased by 1 for every step.
+
+Sequence of even length or odd length have a slight difference. However, we can
+treat them uniformly by just checking whether the first index is larger than the
+second index. If yes, we end the scan. For a even length sequence, the first index
+will never be equal to the second index; and for an odd length sequence, the
+first index equals the second index, when they meet in the middle.
+
+<<pattern>>=
+for (int i = 0, j = v.size() - 1;  i <= j; i--, j++) {
+    // do something
+}
+
+@
+This pattern is usually used in problems such as Palindrome.
+
+@
+\end{document}
+

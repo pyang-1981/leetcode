@@ -1,0 +1,108 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Given a reference of a node in a connected undirected graph. Return a deep copy
+(clone) of the graph. Each node in the graph contains a val (int) and a list
+(List[Node]) of its neighbors.
+
+\textbf{Test case format}:
+
+For simplicity sake, each node's value is the same as the node's index (1-indexed). For example, the first node with val = 1, the second node with val = 2, and so on. The graph is represented in the test case using an adjacency list.
+
+\textbf{Adjacency list} is a collection of unordered lists used to represent a finite graph. Each list describes the set of neighbors of a node in the graph.
+
+The given node will always be the first node with val = 1. You must return the copy of the given node as a reference to the cloned graph.
+
+\textbf{Constraints}:
+\begin{itemize}
+\item 1 $<=$ Node.val $<=$ 100
+\item Node.val is unique for each node.
+\item Number of Nodes will not exceed 100.
+\item There is no repeated edges and no self-loops in the graph.
+\item The Graph is connected and all nodes can be visited starting from the given node.
+\end{itemize}
+
+\section{Solution}
+We can either do a depth first search or a breadth first search, and clone the
+nodes and the edges during the search. Below we will do the depth first search
+using recursion.
+
+Define the node structure as below:
+<<Node struct>>=
+type Node struct {
+    Val       int
+    Neighbors []*Node
+}
+@  %def Node
+Define the \textbf{visit} fuction for the depth first search as follows:
+<<Function visit>>=
+func visit(n, prev *Node, cloned []*Node) *Node {
+    clonedNode := Node{n.Val, []*Node{}}
+    cloned[n.Val] = &clonedNode
+    if prev != nil {
+        prev.Neighbors = append(prev.Neighbors, &clonedNode)
+    }
+    for _, neighbor := range n.Neighbors {
+        if cloned[neighbor.Val] == nil {
+            visit(neighbor, &clonedNode, cloned) 
+        } else {
+            clonedNode.Neighbors = append(clonedNode.Neighbors, cloned[neighbor.Val])
+        }
+    }
+    return &clonedNode
+}
+@  %def visit
+This function takes three parameters. [[n]] is the node to be visited in the
+original graph; [[prev]] is the cloned predecessor node of node [[n]];
+[[cloned]] is a slice storing the pointers of all the cloned nodes.
+We take advantage of the fact that the value of a node
+starts from 1 and never goes beyond 100, and use it as the index into the
+[[cloned]] slice. For example, cloned[[10]] is the pointer to the cloned node
+with value 10.
+
+First the function makes a cloned node of [[n]] called
+[[clonedNode]]. Then it adds the pointer to the cloned node to slice [[cloned]].
+Then the pointer to [[clonedNode]] is added to [[prev]]'s neighbor list,
+Remember that
+[[prev]] is the cloned predecessor of [[n]]. In this way, the function creates a edge
+between [[prev]] and [[clonedNode]] just like the original graph. Also note that
+[[prev]]  should be also added to [[clonedNode]]'s neighbor list. That will
+happen when the function handles the neighbors of [[n]] in the following [[for]]
+loop. 
+
+Then it recursively visits the neighbors of [[n]] by calling [[visit]] on the
+neighbors. Note that if a neighbor is already cloned, we do not visit it
+again, otherwise we will create two copies of the same node. However, we still
+need to add [[neighbor]] to [[clonedNode]]'s neighbor list.
+
+Now let's define the [[cloneGraph]] function to clone the entire original graph.
+<<Function cloneGraph>>=
+func cloneGraph(node *Node) *Node {
+    if node == nil {
+        return nil
+    }
+
+    cloned := make([]*Node, 101)
+    for i, _ := range cloned {
+        cloned[i] = nil
+    }
+
+    return visit(node, nil, cloned)
+}
+@ %def cloneGraph
+\section{Put Everything Together}
+<<*>>=
+<<Node struct>>
+<<Function visit>>
+<<Function cloneGraph>>
+  
+@
+\end{document}
+

@@ -1,0 +1,46 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Scan an C++ vector or other sequence with input iterators, and delete the
+element pointed by the iterator if it satisfies certain condition.
+
+\section{Pattern}
+
+One naive solution is to do something like this:
+
+<<naive solution>>=
+for (auto it = vec.begin(); it != vec.end(); ++it)
+{
+  if (cond(*it)) {
+    vec.erase(it);
+  }
+}
+@
+Unfortunately, this is wrong. After deleting the element at [[it]] by
+[[vec.erase(it)]], [[it]] is no longer valid, and [[++it]] is undefined.
+
+For this to work, we have to slightly modify the for loop like this:
+<<correct solution>>=
+for (auto it = vec.begin(); it != vec.end();) {
+  if(cond(*it)) {
+    vec.erase(it++);
+  } else {
+    ++it;
+  }
+}
+@
+In the for loop, we pass [[it++]] to [[vec.erase]]. This means we are passing
+[[it]] to [[vec.erase]], and then immediately increase [[it]] before the element
+is deleted.
+
+@
+\end{document}
+

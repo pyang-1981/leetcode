@@ -1,0 +1,16 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{noweb}
+
+\begin{document}
+
+An other piece of code
+
+<<with another piece of code>>=
+int `f1(int a) {
+  return 0;
+}
+
+@
+
+\end{document}

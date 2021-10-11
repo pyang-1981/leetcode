@@ -1,0 +1,293 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+
+The DNA sequence is composed of a series of nucleotides abbreviated as 'A', 'C',
+'G', and 'T'. For example, "ACGAATTCCG" is a DNA sequence. When studying DNA, it
+is useful to identify repeated sequences within the DNA.
+
+Given a string s that represents a DNA sequence, return all the 10-letter-long
+sequences (substrings) that occur more than once in a DNA molecule. You may
+return the answer in any order.
+
+\section{Solution}
+
+For a BST three, the node next to the current node in the in-order traversal is the leftmost node
+from the current node's right child (if it exists) or its right child (if it exists), or its
+parent node (if the current node is the left child), or the first node on path
+from the current node to the root, where the current node is in its left subtree, or none (the
+largest node already). See below.
+\begin{figure}[htb]
+  \begin{center}
+    \includegraphics[width=\textwidth]{cases}
+    \caption{Different cases}
+  \end{center}
+\end{figure}
+
+Case (a) and (b) belong to the same category, that is, if the current node has
+right child, then the next node is the leftmost descendant of its right subtree.
+Case (c) and (d) belong to the same category, that is, if the current node has
+no right child, then the next node is the first node on the path from the
+current node to the root where the current node is in its left subtree. Case (e)
+shows the rightmost node of the BST, where is no next node.
+
+In some of the cases, we have to retrace back to the parent or even the
+grand-parent node of the current node. This is not a problem if every node has a
+pointer pointing back to its parent node. But for a BST tree without the parent
+pointer, we have to come up with something that can help us retracing.
+
+For every [[BSTIterator]] object, we include a stack within it to save the nodes
+on the path from the root to the current node it points to. In addition,
+associated with every node in the stack, there is a flag indicating the
+direction we take to reach the current node, either [[LEFT]] or [[RIGHT]].
+
+Having this stack, it is easy to retrace back to the parent node or the
+grand-parent node and so on. For example, the top the stack is the parent node, and the
+second element from the top is the grand-parent node. We also know whether the
+current node is the left child or the right child from the direction flag.
+
+\subsection{golang}
+As there is no standard stack implementation in golang, we choose to implement
+our own. One may use slice as the underlying data structure for the stack. But
+it is not efficient when one wants to grow the slice when the capacity is full.
+This involves allocate a larger memory space and copy all the elements from the
+old memory space to the new memory space.
+
+A linked list is perfect for this case.
+<<golang linked list stack implementation>>=
+type node struct {
+  next *node
+  val  interface{}
+}
+
+type stack struct {
+  top *node
+  size int
+}
+@ %def node stack
+
+Here we defines a generic stack that can hold data of any type (maybe a little
+bit too generic as it allows storing data of different types as well). The key
+is to use [[interface{}]] to represent any type. Later we can type cast or type
+assert to a concrete type based on the context.
+
+Since there is a new proposal to add real generic types to the golang, using it
+allows us to write the following code.
+<<golang linked list stack implementation generics>>=
+type node[T any] struct {
+  next *node
+  val  T
+}
+
+type stack[T any] struct {
+  top  *node[T]
+  size int 
+}
+@
+
+Here, [[T]] in the [[node]] type definition is a type parameter. It is used as
+the type of the [[val]] field in a [[node]]. [[any]] is the type constraint
+meaning that [[T]] can be \textbf{any} type. Other constraints can be defined
+by defining an interface type, such as
+<<golang linked list stack implementation generics>>=
+type Stringify interface {
+  String() string
+}
+
+type node[T Stringify] struct {
+  next *top
+  val  T
+}
+@
+In this case, [[T]] can only be the types that implement the [[Stringify]]
+interface.
+
+Give the [[stack]] type definition, we defines the following operations on a
+stack.
+<<golang linked list stack implementation>>=
+func (s *stack) push(elem interface{}) {
+  n := node{nil, elem}
+  n.next = s.top
+  s.top = n
+  s.size++
+}
+
+func (s *stack) pop() (ret interface{}) {
+  if s.size == 0 {
+    return nil
+  } else {
+    ret = s.top.val
+    s.top = s.top.next
+    s.size--
+  }
+  return
+}
+
+func (s *stack) peak() (ret interface{}) {
+  if s.size == 0 {
+    return nil
+  } else {
+    ret = s.top.val
+  }
+  return
+}
+
+func (s *stack) len() int {
+  return s.size
+}
+@ %def push pop size
+Below is the version using the type parameter [[T]].
+<<golang linked list stack implementation generics>>=
+func (s *stack[T]) push(elem T) {
+  n := node[T]{nil, elem}
+  n.next = s.top
+  s.top = n;
+  s.size++
+}
+
+func (s *stack[T]) pop() {ret T, empty bool} {
+  if s.size == 0 {
+    empty = true
+    return
+  } else {
+    ret = s.top.val
+    empty = false
+    s.top = s.top.next
+    s.size--
+  }
+  return
+}
+
+func (s *stack[T]) peak() {ret T, empty bool} {
+  if s.size == 0 {
+    empty = true
+    return
+  } else {
+    ret = s.top.val
+    empty = false
+  }
+  return
+}
+
+func (s *stack[T]) len() int {
+  return s.size
+}
+@
+There are a couple of differences between the non-generic and generic
+versions. The most noticeable one is how we handle the return value of the
+methods [[pop]], [[peak]]. In the non-generic version, we take advantage of the
+fact that a variable of [[interface{}]] type can take [[nil]] value and return
+[[nil]] when there is no element in the stack. In the generic version, we can
+not do this, since the concrete type represented by [[T]] may not have a [[nil]]
+value. Instead, we use a golang idiomatic way to return two values from these
+two methods, and the second value is set to [[true]] if there is no element in the
+stack.
+
+Now, let's define the BST node type [[TreeNode]]. We assume that the element is of type [[int]] as
+described by the leetcode.
+<<golang BST node implementation>>=
+type TreeNode struct {
+  Val   int
+  Left  *TreeNode
+  Right *TreeNode
+}
+@ %def TreeNode
+Then, we define the iterator type [[BSTIterator]].
+<<golang BST iterator implementation>>=
+type BSTIterator struct {
+  cur       *TreeNode
+  s         stack
+}
+
+type stackElem struct {
+  node *TreeNode
+  dir  int        // 0 for left, and 1 for right
+}
+
+func Constructor(root *TreeNode) BSTIterator {
+  iter := BSTIterator{root, stack{nil, 0}, false}
+  if root == nil {
+    return iter
+  }
+  for iter.cur.Left != nil {
+    iter.s.push(stackElem{iter.cur, 0})
+    iter.cur = iter.cur.Left
+  }
+  return iter
+}
+
+func (this *BSTIterator) Next() (ret int) {
+  if this.cur != nil {
+    ret = this.cur.Val
+  } else {
+    ret = 0
+    return
+  }
+
+  if this.cur.Right != nil {
+    this.s.push(stackElem{this.cur, 1})
+    this.cur = this.cur.Right
+    for this.cur.Left != nil {
+      this.s.push(stackElem{this.cur, 0})
+      this.cur = this.cur.Left
+    }
+    return
+  } else {
+    top := this.s.pop()
+    if top == nil {
+      this.cur = nil
+      return
+    }
+    par := top.(stackElem)
+    for par.dir == 1 {
+      this.cur = par.node
+      top = this.s.pop()
+      if top == nil {
+        break
+      }
+      par = top.(stackElem)
+    }
+    if top == nil  {
+      this.cur = nil
+    } else {
+      this.cur = par.node
+    }
+  }
+}
+
+func (this *BSTIterator) HasNext() bool {
+  if this.cur == nil {
+    return false
+  }
+  return true
+} 
+@ %def BSTIterator stackElem Constructor Next HasNext
+Type [[BSTIterator]] has two fields. [[cur]] points to the current node in the
+BST; [[s]] is the stack storing the nodes from the root to the current node (not
+including the current node), along with the direction of which path we take,
+left or right. For this purpose, the element stored in the stack is of type
+[[stackElem]], which has two fields: [[node]], a node on the path, and [[dir]],
+the direction we take from that node.
+
+[[Constructor]] method returns a initial [[BSTIterator]] given a root of a BST.
+The [[cur]] node is initialized to the leftmost node of the BST (which has the
+smallest vlaue), and [[s]] is initialized accordingly.
+
+[[Next]] method returns the value of the node pointed by [[cur]], and move
+[[cur]] to point to the next node, or [[nil]] if there is no such node. The code
+is just a implementation of the idea we talked about earlier.
+
+[[HasNext]] method returns [[true]] if [[cur]] is not [[nil]], i.e., we can call
+[[Next]] and get its value, and [[false]] otherwise.
+
+@
+\end{document}
+

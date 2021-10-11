@@ -1,0 +1,182 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+Given a triangle, find the minimum path sum from top to bottom. Each step you may move to adjacent numbers on the row below.
+
+\subsection{Example}
+For example, given the following triangle
+\begin{verbatim}
+[
+      [2]
+    [3, 4]
+  [6, 5, 7]
+[4, 1, 8, 3]
+]
+\end{verbatim}
+The minimum path sum from top to bottom is 11 (i.e., 2 + 3 + 5 + 1 = 11).
+
+\section{Solution}
+We can turn this triangle into a directed graph, with one element connected to
+the two elements below it. For example, 2 is connected to 3, and 4; 3 is
+connected to 6, 4, etc.
+
+Then we can do a depth first search using a stack to find a path from the top to
+the bottom. An element at the bottom is the one with no other element to connect
+to. Once we find such an element, we sum up all the elements in the stack. This
+is the sum of the path from the top to the bottom. Once we find all the paths,
+we can output the minimum path sum.
+
+\subsection{Turn a Triangle into a Graph}
+The input triangle is modeled by a two dimensional array.
+The top of the triangle is indexed by [0][0]. The two adjacent elements are
+indexed by [1][0], and [1][1]. In general, for the element indexed by [i][j],
+the two adjacent elements are [i+1][j] and [i+1][j+1], respectively.
+
+We define the following structure to identify a graph node.
+<<Graph Node Definition>>=
+type GraphNode struct {
+  I, J, Val int
+}
+@ %def Node
+[[I]], [[J]], [[Val]] represent the row number, the column number, and the value
+of the node in the input two dimensional array.
+
+\subsection{Stack Definitions}
+<<Stack related Definitions>>=
+type (
+	Stack struct {
+		start, end, index *node
+		length int
+	}
+	node struct {
+		value interface{}
+		next *node
+    prev *node
+	}
+)
+
+// Create a new stack
+func New() *Stack {
+	return &Stack{nil,nil,nil,0}
+}
+// Take the next item off the top of the stack
+func (this *Stack) Pop() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	n := this.end
+	if this.length == 1 {
+		this.start = nil
+		this.end = nil
+	} else {
+    second_end := this.end.prev
+    second_end.next = nil
+    this.end = second_end
+	}
+	this.length--
+	return n.value
+}
+// Push an item on the top of a stack
+func (this *Stack) Push(value interface{}) {
+	n := &node{value,nil, nil}
+	if this.length == 0 {
+		this.start = n
+		this.end = n		
+	} else {
+		this.end.next = n
+    n.prev = this.end
+		this.end = n
+	}
+	this.length++
+}
+// Return the number of items in the stack
+func (this *Stack) Len() int {
+	return this.length
+}
+// Return the top item in the stack without removing it
+func (this *Stack) Peek() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	return this.end.value
+}
+// Iterate every item from the top to the bottom
+// and get the sum
+func (this *Stack) IntSum() int {
+  if this.length == 0 {
+    return 0
+  }
+
+  sum := 0
+  cur := this.start
+  for cur != nil {
+    sum += cur.value.(*StackElem).Node.Val
+    cur = cur.next
+  }
+
+  return sum
+}
+@ %def Stack
+
+\subsection{Stack Element Definition}
+The stack element is a two-element tuple. The first element is a graph node. The
+second element is a flag indicating which neighbor to visit next. The flag is
+initialized to LEFT, meaning visiting the left neighbor at the first. After the
+left neighbor is push onto the stack, the flag is set to RIGHT. After the right
+neighbor is pushed onto the stack, the flag is set to NONE. When trying to push
+a neighbor of a graph node onto the stack, if the flag is NONE, then we pop
+this node out of the stack, since both of its neighbors are visited.
+<<Stack Element Definition>>=
+type StackElem struct {
+  Node GraphNode
+  Flag int
+}
+
+const (
+  LEFT = iota
+  RIGHT = iota
+  NONE = iota
+)
+@ %def StackElem LEFT RIGHT NONE
+\subsection{Main Algorithm}
+Now we are doing a depth first traversal of the graph. Whenever you encounter a
+element at the bottom, we calculate the path sum. An element at the bottom is the
+element with the largest row number in the input two dimensional array.
+<<Main Algorithm Definition>>=
+func minimumTotal(triangle [][]int) int {
+  stack := New()
+
+  int sum = math.MaxInt32
+  stack.Push(&StackElem{GraphNode{0, 0, triangle[0][0]}, LEFT})
+  for stack.Len() != 0 {
+    top := stack.Peek().(*StackElem)
+    if top.Node.I == len(triangle) {
+      stackSum := stack.IntSum()
+      if stackSum < sum {
+        sum = stackSum
+      }
+      stack.Pop()
+    } else if top.Flag == NONE {
+      stack.Pop()
+    } else if top.Flag == LEFT {
+      stack.Push(&StackElem{GraphNode{top.Node.I + 1, top.Node.J, triangle[top.Node.I + 1][top.Node.J]}, LEFT})
+      top.Flag = RIGHT
+    } else if top.Flag == RIGHT {
+      stack.Push(&StackElem{GraphNode{top.Node.I + 1, top.Node.J + 1, triangle[top.Node.I + 1][top.Node.J + 1]}, LEFT})
+      top.Flag = NONE
+    }
+  }
+
+  return sum
+}
+@ %def minimumTotal
+\subsection{Put Everything Together}
+<<*>>=
+import(
+  "math"
+)
+<<Graph Node Definition>>
+<<Stack related Definitions>>
+<<Stack Element Definition>>
+<<Main Algorithm Definition>>

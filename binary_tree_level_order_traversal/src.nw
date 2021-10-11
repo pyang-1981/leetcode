@@ -1,0 +1,144 @@
+
+\noweboptions{smallcode}
+\noweboptions{longxref}
+\section{Problem description}
+Given a binary tree, return the level order traversal of its nodes' values. (ie, from left to right, level by level).
+
+\subsection{Example}
+Given binary tree [3,9,20,null,null,15,7],
+\begin{verbatim}
+ 3
+/ \
+9  20
+/  \
+15   7
+\end{verbatim}
+Return its level order traversal as:
+\begin{verbatim}
+[
+    [3],
+    [9,20],
+    [15,7]
+]  
+\end{verbatim}
+
+\section{Solution}
+Level order traversal is equivalent to breadth first search. The traversal
+utilizes a queue structure which is defined as follows.
+<<Define queue structure and methods>>=
+type (
+	Queue struct {
+		start, end *node
+		length int
+	}
+	node struct {
+		value interface{}
+		next *node
+	}
+)
+
+// Create a new queue
+func New() *Queue {
+	return &Queue{nil,nil,0}
+}
+// Take the next item off the front of the queue
+func (this *Queue) Dequeue() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	n := this.start
+	if this.length == 1 {
+		this.start = nil
+		this.end = nil
+	} else {
+		this.start = this.start.next
+	}
+	this.length--
+	return n.value
+}
+// Put an item on the end of a queue
+func (this *Queue) Enqueue(value interface{}) {
+	n := &node{value,nil}
+	if this.length == 0 {
+		this.start = n
+		this.end = n		
+	} else {
+		this.end.next = n
+		this.end = n
+	}
+	this.length++
+}
+// Return the number of items in the queue
+func (this *Queue) Len() int {
+	return this.length
+}
+// Return the first item in the queue without removing it
+func (this *Queue) Peek() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	return this.start.value
+}
+@ %def Queue node New Dequeue Enqueue Len Peek 
+Now we define the tree node structure.
+<<Define tree node structure>>=
+type TreeNode struct {
+    Val int
+    Left *TreeNode
+    Rgith *TreeNode
+}
+@ The level order traversal is defined as follows.
+<<Define level order traversal>>=
+func levelOrder(root *TreeNode) [][]int {
+    if root == nil {
+        return [][]int{}
+    }
+
+    q := New()
+    
+    child := 0
+    if root.Left != nil {
+        q.Enqueue(root.Left)
+        child += 1
+    }
+    if root.Right != nil {
+        q.Enqueue(root.Right)
+        child += 1
+    }
+    nextChild := 0
+
+    res := [][]int{[]int{}}
+    res[0] = append(res[0], root.Val)
+    if child != 0 {
+        res = append(res, []int{})
+    }
+    
+    for q.Len() > 0 {
+        if child == 0 {
+            res = append(res, []int{})
+            child = nextChild
+            nextChild = 0
+        }
+        t := q.Dequeue()
+        child -= 1
+        res[len(res)-1] = append(res[len(res)-1], t.(*TreeNode).Val)
+        if t.(*TreeNode).Left != nil {
+            q.Enqueue(t.(*TreeNode).Left)
+            nextChild += 1
+        }
+        if t.(*TreeNode).Right != nil {
+            q.Enqueue(t.(*TreeNode).Right)
+            nextChild += 1
+        }
+    }
+
+    return res
+}
+@ %def levlOrder
+When traversing, the function keeps track of two variables [[child]], and
+[[nextChild]]. [[child]] is set to the number of children in the queue. When
+this number reaches 0, it is the time to add new slice into the result. Also
+when adding a child's child into the queue, we increase [[nextChild]], and when
+[[child]] reaches 0, it is reset to [[nextChild]], since children's children
+becauses the new children. In addition, [[nextChild]] is reset to 0 at the same
+time.

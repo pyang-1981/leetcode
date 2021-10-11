@@ -1,0 +1,108 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given a binary tree, you need to compute the length of the diameter of the tree.
+The diameter of a binary tree is the length of the longest path between any two
+nodes in a tree. This path may or may not pass through the root.
+
+\subsection{Example}
+Given a binary tree
+\begin{verbatim}
+
+          1
+         / \
+        2   3
+       / \     
+      4   5
+\end{verbatim}
+
+Return 3, which is the length of the path [4,2,1,3] or [5,2,1,3].
+
+\textbf{Note: The length of path between two nodes is represented by the number of edges
+between them.}
+
+\section{Solution}
+Denote $d(n)$ as the depth of a node $n$, i.e., the longest path length to one of its
+leaves. For example, $d(1)$ in the above example is 2 (either path to 4 or 5).
+
+The Depth $d(n)$ can be recursively defined by using the depth of $n$'s
+children.
+\begin{itemize}
+\item If $n$ has no child, $d(n) = 0$.
+\item If $n$ has one child, $d(n) = d(c) + 1$, where $c$ is the child.
+\item If $n$ has two children, $d(n) = max(d(c_1), d(c_2)) + 1$, where $c_1$ and
+$c_2$ are the two children.
+\end{itemize}
+
+Taking any subtree of a tree, the longest path through its root $r$, denoted by
+$l(r)$, can be expressed in terms of the depthes of its children.
+\begin{itemize}
+\item If it has no child, $l(r) = 0$.
+\item If it has one child, $l(r) = d(c) + 1$, where $d(c)$ is the depth of the
+child.
+\item If it has two children, $l(r) = d(c_1) + d(c_2) + 2$, where $c_1$ and
+$c_2$ are its two children.
+\end{itemize}
+
+For example, root $1$ in the above example has two children, $2$ and $3$. The
+depth of $2$ is 1, i.e., $2\rightarrow4$. The depth of 3 is 0. Thus, the longest
+path through $1$ is $1 + 0 + 2 = 3$, i.e. $4\rightarrow2\rightarrow1\rightarrow3$.
+
+The recurive definition of the depth leads to following recursive function to
+calculate the depth, and in the meantime, calculate the longest path through the
+root of every subtree.
+<<Def tree structure>>=
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+<<Def depth function>>=
+int depth(struct TreeNode *cur_node, int &max)
+{
+    if (cur_node == NULL) {
+        // The current node is NULL, return
+        // 0 depth.
+        return 0;
+    }
+
+    if (cur_node->left == NULL && cur_node->right == NULL) {
+        // The current node is a leaf, return
+        // 0 depth.
+        return 0;
+    }
+
+    int left_depth = 0;
+    if (cur_node->left) {
+        // If the current node has the left child,
+        // recursively calculate the depth of the child.
+        left_depth = depth(cur_node->left, max);
+    }
+    int right_depth = 0;
+    if (cur_node->right) {
+        // If the current node has the right child,
+        // recursively calculate the depth of the child.
+        right_depth = depth(cur_node->right, max);
+    }
+    
+    // Calculate the depth of the current node.
+    depth = max(left_depth, right_depth) + 1;
+    // Calculate the longest path length through
+    // the current node as the root of a subtree.
+    int path_len = left_depth + right_depth
+                   + (cur_node->left != NULL ? 1 : 0)
+                   + (cur_node->right != NULL ? 1 : 0);
+    
+    // If the longest path length is bigger than
+    // maximum path length found so far,
+    // update the maximum path length.
+    if (path_len > max) max = path_len;
+    // Return the depth of the current node.
+    return depth;
+}

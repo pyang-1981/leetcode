@@ -1,0 +1,99 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+\section{Problem description}
+Given a binary tree, determine if it is a valid binary search tree (BST). Assume a BST is defined as follows:
+
+\section{Solution}
+A BST and the following condition are equivalent.
+
+\begin{center}
+The inorder traversal produces an increasing sequence.
+\end{center}
+
+Thus, we just need to do an inorder traversal, and upon visiting each value,
+check whether it is bigger than the previous value. Below is the code.
+<<Define TreeNode struct>>=
+type TreeNode struct {
+    Val int
+    Left *TreeNode
+    Right *TreeNode
+}
+@ %def TreeNode
+
+<<Define BST validation function>>=
+func isValidBST(root *TreeNode) bool {
+    if root == nil {
+        return true
+    }
+    var inorder func(root *TreeNode, s *[]int) bool
+    inorder = func(root *TreeNode, s *[]int) bool {
+        if root.Left == nil && root.Right == nil {
+            if len(*s) == 0 {
+                *s = append(*s, root.Val)
+                return true
+            }
+            if root.Val <= (*s)[len(*s)-1] {
+                return false
+            } else {
+                *s = append(*s, root.Val)
+                return true
+            }
+        }
+        if root.Left != nil {
+            if inorder(root.Left, s) == false {
+                return false
+            }
+        }
+        if len(*s) != 0 && root.Val <= (*s)[len(*s)-1] {
+            return false
+        } else {
+            *s = append(*s, root.Val)
+        }
+        if root.Right != nil {
+            if inorder(root.Right, s) == false {
+                return false
+            }
+        }
+        return true
+    }
+    s := []int{}
+    return inorder(root, &s)
+}
+@ In the above code, the slice [[s]] stores an array of value already visisted.
+Upon visisting a new value, we just need to compare it with the last value in
+[[s]].
+
+\section{Testing}
+To test the algorithm, we construct the following tree:
+\begin{verbatim}
+     1
+    /
+   1
+\end{verbatim}
+Since it is not a BST, we expect the algorithm return false. The following
+function constructs the tree.
+<<Define sample tree construction function>>=
+func constructSampleTree() *TreeNode {
+    root := &TreeNode{Val: 1, Left: nil, Right: nil}
+    leaf := &TreeNode{Val: 1, Left: nil, Right: nil}
+    root.Left = leaf
+    return root
+}
+@ Now the driver code for testing.
+<<*>>=
+import (
+    "fmt"
+    "runtime/debug"
+)
+
+<<Define TreeNode struct>>
+
+<<Define BST validation function>>
+
+<<Define sample tree construction function>>
+
+func main() {
+    root := constructSampleTree()
+    fmt.Println(isValidBST(root))
+}
+

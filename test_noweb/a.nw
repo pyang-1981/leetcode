@@ -1,0 +1,28 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{noweb}
+
+\begin{document}
+
+An explanation.
+
+<<with a piece of code>>=
+int `f(int a) {
+  return 0;
+}
+
+@ 
+
+The main program.
+
+<<the main>>=
+<<with a piece of code>>
+<<with another piece of code>>
+void main(void) {
+  f();
+  f1();
+}
+
+@
+
+\end{document}

@@ -1,0 +1,211 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+\section{Problem description}
+Given a binary tree and a sum, find all root-to-leaf paths where each path's sum
+equals the given sum.
+
+\bf{Note}: A leaf is a node wit no children.
+
+\subsection{Example}
+Given the below binary tree and sum = 22,
+
+\begin{verbatim}
+      5
+    /   \
+   4     8
+  /    /   \
+11    13   4
+/ \       / \
+7 2      5   1
+\end{verbatim}
+
+Return:
+\begin{verbatim}
+[
+    [5, 4, 11, 2]
+    [5, 8, 4, 5]
+]
+\end{verbatim}
+
+
+\section{Solution}
+Doing a preorder traversal using a stack. From the bottom of the stack to the
+top of the stack forms a path from the root to the node at the top of the stack.
+Once a leaf is reached, we compute the sum of all the values in the stack. If
+the sum is equal to the given value, we find a path. Then we print the path
+starting from the bottom of the stack to the top of the stack.
+
+<<Define TreeNode struct>>=
+type TreeNode struct {
+    Val int
+    Left *TreeNode
+    Right *TreeNode
+}
+@ %def TreeNode
+
+<<Define stack related functions>>=
+type (
+	Stack struct {
+		start, end, index *node
+		length int
+	}
+	node struct {
+		value interface{}
+		next *node
+    prev *node
+	}
+)
+
+// Create a new stack
+func New() *Stack {
+	return &Stack{nil,nil,nil,0}
+}
+// Take the next item off the top of the stack
+func (this *Stack) Pop() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	n := this.end
+	if this.length == 1 {
+		this.start = nil
+		this.end = nil
+	} else {
+    second_end = this.end.prev
+    second_end.next = nil
+    this.end = second_end
+	}
+	this.length--
+	return n.value
+}
+// Push an item on the top of a stack
+func (this *Stack) Push(value interface{}) {
+	n := &node{value,nil, nil}
+	if this.length == 0 {
+		this.start = n
+		this.end = n		
+	} else {
+		this.end.next = n
+    n.prev = this.end
+		this.end = n
+	}
+	this.length++
+}
+// Return the number of items in the stack
+func (this *Stack) Len() int {
+	return this.length
+}
+// Return the top item in the stack without removing it
+func (this *Stack) Peek() interface{} {
+	if this.length == 0 {
+		return nil
+	}
+	return this.end.value
+}
+// Iterate every item from the top to the bottom
+// and get the sum
+func (this *Stack) IntSum() int {
+  if this.length == 0 {
+    return 0
+  }
+
+  sum := 0
+  cur := this.start
+  for cur != nil {
+    sum += cur.value.(*StackElem).node.Val
+    cur = cur.next
+  }
+
+  return sum
+}
+// Interate every item from the top to the bottom
+func (this *Stack) ConvertToIntSlice() []int {
+  if this.length == 0 {
+    return []int{}
+  }
+
+  cur := this.start
+  res := []int{}
+  for cur != nil {
+    res = append(res, cur.value.(*StackElem).node.Val
+    cur = cur.next
+  }
+
+  return res
+}
+@ %def Stack
+
+<<Define stack element>>=
+type StackElem struct {
+  node *TreeNode
+  nextChild int
+}
+
+const (
+  LEFT = iota
+  RIGHT = iota
+  NONE = iota
+)
+@ %def StackElem LEFT RIGHT
+We push to the stack values of the type [[*StackElem]]. It consists of a pointer
+to a TreeNode and a flag [[nextChild]] indicating which child node to push onto
+the stack next. When a TreeNode is pushed onto the stack, the flag is set to
+[[LEFT]], meaning that we need to push the left child onto the stack next. After
+the left child is pushed, we change the flag to [[RIGHT]]. After the right child
+is pushed, we change to flag to [[NONE]].
+
+<<Define pathSum function>>=
+func pathSum(root *TreeNode, sum int) [][]int {
+  if root == nil {
+    return [][]int{}
+  }
+
+  res := [][]int{}
+  s := New()
+  s.Push(&StackElem{node: root, nextChild: LEFT})
+
+  for s.Len() != 0 {
+    top := s.Peek().(*StackElem)
+    if top.nextChild == LEFT {
+      top.nextChild = RIGHT
+      if top.node.Left != nil {
+        s.Push(&StackElem{node: top.node.Left, nextChild: LEFT})
+        continue
+      }
+    } else if top.nextChild == RIGHT {
+      top.nextChild = NONE
+      if top.node.Right != nil {
+        s.Push(&StackElem{node: top.node.Right, nextChild: LEFT})
+        continue
+      }
+    } else {
+      // At this point, either we finish pushing all the child nodes,
+      // or it is a leaf node.
+      // If it is a leaf node, we calculate the sum and
+      // append the the path to the result.
+      // In both cases, we need to pop this node out.
+      if top.node.Left == nil && top.node.Right == nil {
+        if s.IntSum() == sum {
+          res = append(res, s.ConvertToIntSlice())
+        }
+      }
+      s.Pop()
+    }
+  }
+
+  return res
+}
+@ %def pathSum
+Function [[pathSum]] finds all the paths from the root to the leaf whose sum is
+a specific value. It returns the paths in a two-dimension slice. It uses a stack
+to visit the nodes of the tree in pre-order. After it pushes a leaf onto the
+stack, the nodes on the path from the root to the leaf are stored in the stack.
+If the sum of the values of those nodes is equal to the specific value, the
+values are converted to a integer slice and appended to the result.
+
+The complete code is listed here:
+<<*>>=
+<<Define TreeNode struct>>
+<<Define stack related functions>>
+<<Define stack element>>
+<<Define pathSum function>>
+

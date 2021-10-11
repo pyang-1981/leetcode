@@ -1,0 +1,263 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\noweboptions{smallcode}
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given a 2D board and a word, find if the word exists in the grid.
+
+The word can be constructed from letters of sequentially adjacent cell, where
+"adjacent" cells are those horizontally or vertically neighboring. The same
+letter cell may not be used more than once.
+
+\subsection{Example}
+\fbox{
+    \begin{tabular}{l}
+        board = $\begin{bmatrix}
+                     A & B & C & E\\
+                     S & F & C & S\\
+                     A & D & E & E
+                \end{bmatrix}$\\\\
+        Given word = ABCCED, return \textbf{true}.\\\\
+        Given word = SEE, return \textbf{true}.\\\\
+        Given word = ABCB, return \textbf{false}.  
+    \end{tabular}
+}
+
+\section{Solution}
+We could use DFS at every possible starting cell in the matrix to tell whether a
+word exists. However, here we use a different method based on BFS.
+
+We use a pair of [[int]] to represent a cell in the board. The first element in
+the pair represents the row number of the cell, and the second element in the
+pair represents the column number of the cell.
+<<Def cell type>>=
+using cell_t = pair<int, int>;
+@
+For a cell, its neighboring cells are the ones above it, below it, left to it
+and right to it (if they exists). We define the following iterator class to
+iterate over the neighboring cells of a cell.
+<<Def neighbor iterator>>=
+class neighbor_iter_t
+{
+public:
+    // Initializes a beginning iterator.
+    neighbor_iter_t(const cell_t &c, int m, int n) noexcept;
+    // Initializes an end iterator.
+    neighbor_iter_t() noexcept;
+
+    // Dereference, and get the cell it points to.
+    cell_t operator*() const noexcept;
+
+    // Advancement operator.
+    neighbor_iter_t& operator++() noexcept;
+
+    // neighbor iterator comparator for inequality
+    friend bool
+    operator!=(const neighbor_iter_t &it1, const neighbor_iter_t &it2) noexcept;
+
+private:
+    enum class direction {
+        ABOVE = 0,
+        BELOW,
+        LEFT,
+        RIGHT
+    };
+    cell_t _c;
+    int _m, _n;
+    mutable direction _t = direction::ABOVE;
+};
+@
+The data member [[direction _t]] records the relative position of a cell's
+current neighbor if it exists.
+
+The implementation of each method is as follows:
+<<Def neighbor iterator constructor that initializes a beginning iterator>>=
+neighbor_iter_t::neighbor_iter_t(const cell_t &c, int m, int n) noexcept
+    :_c(c), _m(m), _n(n)
+{}
+@
+To initialize a neighbor iterator for a cell, we pass that cell as the first
+argument to the constructor above, we also need the row number [[m]], and the column
+number [[n]] of the board passed as the arguments, so that we know whether a
+neighbor is out of bound of the board or not.
+<<Def neighbor iterator constructor that initializes an end iterator>>=
+neighbor_iter_t::neighbor_iter_t() noexcept
+    :_c(-1, -1), _m(0), _n(0)
+{}
+@
+As usual, the end iterator is a special iterator for imaginary cell at (-1, -1)
+of a imaginary board with 0 rows and 0 columns.
+
+Now we define the following comparator for inequality test:
+<<Def neighbor iterator inequality comparator>>=
+bool
+operator!=(const neighbor_iter_t &it1, const neighbor_iter_t &it2) noexcept
+{
+    return it1._c != it2._c || it1._m != it2._m ||
+           it1._n != it2._n || it1._t != it2._t;
+}
+@
+Next, the dereference operator is defined as:
+<<Def neighbor iterator dereference method>>=
+cell_t neighbor_iter_t::operator*() const noexcept
+{
+    switch(_t) {
+    case direction::ABOVE:
+        if (_c.first - 1 >=  0) {
+            return cell_t(_c.first - 1, _c.second);
+        }
+        _t = direction::BELOW;
+        //fallthrough
+    case direction::BELOW:
+        if (_c.first + 1 < _m) {
+            return cell_t(_c.first + 1, _c.second);
+        }
+        _t = direction::LEFT;
+        //fallthrough
+    case direction::LEFT:
+        if (_c.second - 1 >= 0) {
+            return cell_t(_c.first, _c.second - 1);
+        }
+        _t = direction::RIGHT;
+        //fallthrough
+    case direction::RIGHT:
+       if (_c.second + 1 < _n) {
+           return cell_t(_c.first, _c.second + 1);
+       }
+    };
+
+    return cell_t(-1, -1);
+}
+@
+The dereference operator returns a new neighbor cell based on the
+direction [[_t]] relative to the current cell [[_c]]. It starts to try the
+neighbor cell above the current cell. If it exists, it returns the cell.
+Otherwise, it changes the direction, and try the neighbor cell below the
+current cell, and so on.
+
+\textbf{Note that this dereference operator is unconvention in that it \\
+cannot be assigned to.}
+
+<<Def neighbor iterator advancement operator>>=
+neighbor_iter_t& neighbor_iter_t::operator++() noexcept
+{
+    if (_t == direction::RIGHT) {
+        _c = cell_t(-1, -1);
+        _m = _n = 0;
+    } else {
+        if (_t == direction::ABOVE) _t = direction::BELOW;
+        if (_t == direction::BELOW) _t = direction::LEFT;
+        if (_t == direction::LEFT) _t = direction::RIGHT;
+    }
+
+    return *this;
+}
+@
+The advancement operator simply changes the direction [[_t]] by [[++_t]], or if
+the current direction is [[RIGHT]], changes the iterator to an end iterator.
+
+Next we define the function that extracts the value out of a cell in a board. We
+use [[vector<vector<char>>]] to represent a board.
+<<Def board type>>=
+using board_t = vector<vector<char>>;
+@
+Then the extraction function is defined as:
+<<Def cell value extraction func>>=
+inline char extract_from_cell(const cell_t &c, const board_t &b) noexcept
+{
+    return b[c.first][c.second];
+}
+@
+Using the above constucts, the BFS can be defined as:
+<<Def BFS>>=
+bool BFS(const cell_t &c, const board_t &b, const string &word) noexcept
+{
+    // BFS uses a queue to store all the cells to be visited.
+    // We also store the word accumulated before the cell
+    // is visited.
+    queue<pair<cell_t, string>> queue;
+
+    // BFS uses a set to store all the cells already visited.
+    set<cell_t> visited;
+
+    // Push the starting cell into the queue.
+    queue.push(make_pair(c, ""));
+
+    // Start search
+    while(!queue.empty()) {
+        auto [c, w] = queue.front(); // Structure binding
+        queue.pop();
+
+        // Append the current value of the cell.
+        w.push_back(extract_from_cell(c, b));
+        if (w == word) {
+            return true;
+        }
+        visited.insert(c);
+
+        // if w is not the prefix of word,
+        // do not explore this path further.
+        if (word.find_first_of(w, 0) == string::npos) {
+            continue;
+        }
+
+        neighbor_iter_t it(c, b.size(), b[0].size());
+        for (; it != neighbor_iter_t(); ++it) {
+            // Check whether the cell is already visisted.
+            // If yes, skip it.
+            if (visited.find(*it) != visited.end()) continue;
+            queue.push(make_pair(*it, w));
+        }
+    }
+
+    return false;
+}
+<<Def search_word func>>=
+bool search_word(const vector<vector<char>> &board, const string &word)
+{
+    if (word.empty()) return true;
+    if (board.empty() || board[0].empty()) return false;
+
+    for (int i = 0; i < board.size(); ++i) {
+        for (int j = 0; j < board[0].size(); ++j) {
+            if (board[i][j] == word[0]) {
+                if (BFS(cell_t(i, j), board, word)) return true;
+            }
+        }
+    }
+
+    return false;
+}
+<<*>>=
+#include <iostream>
+#include <queue>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+<<Def cell type>>
+<<Def neighbor iterator>>
+<<Def neighbor iterator constructor that initializes a beginning iterator>>
+<<Def neighbor iterator constructor that initializes an end iterator>>
+<<Def neighbor iterator inequality comparator>>
+<<Def neighbor iterator dereference method>>
+<<Def neighbor iterator advancement operator>>
+<<Def board type>>
+<<Def cell value extraction func>>
+<<Def BFS>>
+<<Def search_word func>>
+
+int main()
+{
+    vector<vector<char>> board(3);
+    board.push_back(vector<char>({'A','B','C','E'}));
+    board.push_back(vector<char>({'S','F','C','S'}));
+    board.push_back(vector<char>({'A','D','E','E'}));
+    cout << search_word(board, "ABCCED") << endl;
+    return 0;
+}

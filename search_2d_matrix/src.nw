@@ -1,0 +1,145 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Write an efficient algorithm that searches for a value in an m x n matrix. This matrix has the following properties:
+\begin{itemize}
+  \item Integers in each row are sorted from left to right.
+  \item The first integer of each row is greater than the last integer of the previous row.
+\end{itemize}
+\subsection{Example 1}
+\fbox{
+  \begin{tabular}{l}
+    Input:\\
+    matrix = $\begin{bmatrix}
+                 1 & 3 & 5 & 7\\
+                 10 & 11 & 16 & 20\\
+                 23 & 30 & 34 & 50
+              \end{bmatrix}$\\\\
+    target = 3\\\\
+    output = true
+  \end{tabular}
+}
+\subsection{Example 2}
+\fbox{
+  \begin{tabular}{l}
+    Input:\\
+    matrix = $\begin{bmatrix}
+                 1 & 3 & 5 & 7\\
+                 10 & 11 & 16 & 20\\
+                 23 & 30 & 34 & 50
+              \end{bmatrix}$\\\\
+    target = 13\\\\
+    output = false
+  \end{tabular}
+}
+@
+\section{Solution}
+If we concatenate the rows in the matrix together, we obtain a sorted array where we can search an element using binary search. What we need to do is converting the index in the concatenated array to the index in the matrix and vice versa.
+
+We use [[std::pair<int, int>]] to represent a matrix index.
+<<matrix index type def>>=
+using matrix_idx_t=std::pair<int, int>;
+@
+Then, we define the following function to convert an array index of type [[int]] to the corresponding matrix index.
+<<Function that convert array index to matrix index>>=
+matrix_idx_t
+array_idx_to_matrix_idx(int array_index, int m, int n)
+{
+    if (array_index >= m * n) {
+      // array_index out of bound
+      return std::make_pair(-1, -1);
+    }
+
+    return std::make_pair(array_index / n, array_index % n);
+}
+@
+The function [[array_index_to_matrix_idx]] accepts three arguments. One is the array index [[array_index]], and the other one is the row number of the matrix [[m]], the final one is the column number of the matrix [[n]]. If the array index is out of bound, i.e., it is $>= m \times n$, i.e. the total number of the elements in the matrix, then an invalid matrix index (-1, -1) is returned. Otherwise, we use the following equations to get the row index and column index:
+\begin{eqnarray}
+  row\_index = array\_index / n \\
+  column\_index = array\_index \% n
+\end{eqnarray}
+
+Then we define the following function to fetch the value at a certain matrix index. The function uses the following matrix definition:
+<<matrix type def>>=
+template<class T>
+using matrix_t=std::vector<vector<T>>;
+@
+The function definition is:
+<<Function that returns an element at a matrix index>>=
+template<class T>
+const T&
+access_matrix(matrix_idx_t index, const matrix_t<T> &matrix)
+{
+    return matrix[index.first][index.second];
+}
+@
+Now, we can access a matrix element at array index [[mid]] in matrix [[matrix]] using
+<<Access matrix element at array index mid>>=
+access_matrix(
+    array_idx_to_matrix_idx(mid,matrix.size(), matrix[0].size()),
+    matrix);
+@
+Finally, we define the binary search function as follows:
+<<Function that binary search an element in the matrix>>=
+template<class T>
+bool
+matrix_binary_search(const T &target, const matrix_t<T> &matrix)
+{
+    // Check for empty matrix
+    if (matrix.empty() || matrix[0].empty()) return false;
+    
+    int left = 0;
+    int right = matrix.size() * matrix[0].size() - 1;
+
+    while (left <= right) {
+      int mid = (left + right) / 2;
+      const T &mid_val = <<Access matrix element at array index mid>>
+      if (mid_val == target) return true;
+      if (mid_val > target) right = mid - 1;
+      else left = mid + 1;
+    }
+
+    return false;
+}
+@
+Now if we have a target element [[target]], and a matrix [[matrix]], we can search the element by doing the following call:
+<<binary search matrix>>=
+matrix_binary_search(target, matrix);
+@
+The following is the boilplate code from leetcode that calls our function:
+<<leetcode>>=
+class Solution {
+public:
+    bool searchMatrix(const vector<vector<int>>& matrix, int target) {
+        return <<binary search matrix>>
+    }
+};
+@
+Put everything together, we have
+<<*>>=
+#include <iostream>
+#include <vector>
+#include <utility>
+
+using namespace std;
+
+<<matrix index type def>>
+<<matrix type def>>
+<<Function that convert array index to matrix index>>
+<<Function that returns an element at a matrix index>>
+<<Function that binary search an element in the matrix>>
+<<leetcode>>
+
+int main()
+{
+    cout<<Solution().searchMatrix({{1,   3,  5,  7}, {10, 11, 16, 20},
+                           {23, 30, 34, 50}}, 3) << endl;
+    return 0;
+}
+
+

@@ -1,0 +1,100 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given an array with n objects colored red, white or blue, sort them in-place so that objects of the same color are adjacent, with the colors in the order red, white and blue.
+
+Here, we will use the integers 0, 1, and 2 to represent the color red, white, and blue respectively.
+
+\textbf{Note: You are not suppose to use the library's sort function for this problem.}
+
+\subsection{Example}
+\fbox{
+    \begin{tabular}{l}
+        Input: [2,0,2,1,1,0] \\
+        Output: [0,0,1,1,2,2]
+    \end{tabular}
+}
+
+\subsection{Follow up}
+A rather straight forward solution is a two-pass algorithm using counting sort. First, iterate the array counting number of 0's, 1's, and 2's, then overwrite array with total number of 0's, then 1's and followed by 2's. Could you come up with a one-pass algorithm using only constant space?
+
+\section{Solution}
+We can use quicksort. Quicksort sorts an array recursively. In each round, the array in question is divided into two halves, with the elments in the first half being smaller than the element in the second half. We do this by pick a pivot element so that the elements in the first half is smaller or equal to the pivot and the elements in the second half are bigger than the pivot. Then we recursively apply this process to the first half, and to the second half.
+
+Now, suppose the entire array is stored in [[nums]] of the type [[std::vector<int>]], and the subarray under the current round is marked by the leftmost index [[left]], and the rightmost index [[right]].
+We choose the first element in this range as the pivot (or we can choose a random element as the pivot).
+<<Def pivot element>>=
+int pivot = nums[left];
+@
+We then designate an index [[right_bound]] so that the element within [[[left]], [[right_bound]]) is smaller or equal to the [[pivot]]. The initial value of [[right_bound]] is [[left]], meaning no such element.
+<<Def right bound>>=
+int right_bound = left;
+@
+Then we scan the subarray from [[left]] to [[right]], if we find an element at index [[i]] that is smaller or equal to the pivot, we swap this element with the element at [[right_bound]] and increase [[right_bound]] by 1. In this case, we maintain the invariant, i.e., the elements with [[[left]], [[right_bound]]) is smaller or equal to pivot. Once we finish the scanning, the subarray looks like this. Elements in [[[left]], [[right_bound]]) is smaller or equal to pivot, elements in [[[right_bound]], [[right]]] is bigger than the pivot. Finally, we can swap elements at [[left]] (pivot) and element at [[right_bound]] - 1, so that the element at [[right_bound]] - 1 is larger or equal to the previous elements.
+<<Scan and exchange>>=
+for (int i = left; i <= right; i++) {
+    if (nums[i] <= pivot) {
+        swap(nums[i], nums[right_bound]);
+        right_bound++; 
+    }
+}
+swap(nums[left], nums[right_bound - 1]);
+@
+Then we can return the pivot index as [[right_bound]] - 1.
+<<Return pivot index>>=
+return right_bound - 1;
+@
+Now the function that divides the subarray into two halves can be defined as:
+<<Def the function that divide the subarray>>=
+int partition(vector<int> &nums, int left, int right)
+{
+    <<Def pivot element>>
+    <<Def right bound>>
+    <<Scan and exchange>>
+    <<Return pivot index>>
+}
+@
+Once the subarray is divided into two halves, we can recursively apply the quicksort process to the two halves.
+<<Process the first half recursively>>=
+quicksort(nums, left, pivot_index - 1);
+<<Process the second half recursively>>=
+quicksort(nums, pivot_index + 1, right);
+@
+The special case where the subarray is empty or has only one element, i.e. [[left]] $>=$ [[right]], can be handled by a simple return (the subarray is already sorted).
+<<Empty or one-element subarray handling>>=
+if (left >= right) {
+    return;
+}
+@
+Then the whole quicksort can be defined as
+<<Def quicksort>>=
+void quicksort(vector<int> &nums, int left, int right)
+{
+    <<Empty or one-element subarray handling>>
+    int pivot_index = partition(nums, left, right);
+    <<Process the first half recursively>>
+    <<Process the second half recursively>>
+}
+@
+We still need a wrapper version of quicksort so that we can sort the entire array without specifing [[left]] and [[right]].
+<<Def wrapper quicksort>>=
+void qsort(vector<int> &nums)
+{
+    quicksort(nums, 0, nums.size() - 1);
+}
+@
+The leetcode boilplate code that calls [[qsort]] is defined as
+<<leetcode>>=
+class Solution {
+public:
+    void sortColors(vector<int>& nums) {
+        qsort(nums);        
+    }
+};
+<<*>>=
+<<leetcode>>

@@ -1,0 +1,90 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+Given a binary tree containing digits from 0-9 only, each root-to-leaf path
+could represent a number. An example is the root-to-leaf path $1->2->3$ which represents the number 123.
+Find the total sum of all root-to-leaf numbers.
+
+Note: A leaf is a node with no children.
+
+\subsection{Example}
+\begin{verbatim}
+Input: [1, 2, 3]
+     1
+    / \
+  2     3
+Output: 25
+\end{verbatim}
+
+\section{Solution}
+We traverse the tree using pre-order, i.e, for each subtree, visit the root,
+then the left child, then the right child. When visiting a node, we provide the
+accumulated value from the root to the parent of that node, denoted by [[accu]], then the
+accumulated value after visiting this node is [[accu]] = 10 * [[accu]] +
+[[Val]], where [[Val]] is the value of the node just visited.
+
+For the above example, [[accu]] is 0 before visiting the root 1, after visiting
+the root 1, [[accu]] = 10 * 0 + 1 = 1. Before visiting the node 2, [[accu]] is
+1, after visiting this node, [[accu]] = 1 * 10 + 2 = 12.
+
+After visiting a leaf node, we add [[accu]] to the overall sum of the tree.
+After we finish traversing the tree, we have the correct result.
+
+\subsection{Tree node structure}
+The binary tree structure is defined as follows.
+<<Define tree node structure>>=
+type TreeNode struct {
+  Val int
+  Left *TreeNode
+  Right *TreeNode
+}
+@ %def TreeNode
+
+\subsection{Algorithm Implementation}
+<<Define visitNode function>>=
+func visitNode(node *TreeNode, accu int, sum *int) {
+    int new_accu = 10 * accu + node.Val
+    if node.Left == nil && node.Right == nil {
+        *sum = *sum + new_accu
+        return
+    }
+    if node.Left != nil {
+        visitNode(node.Left, new_accu, sum)
+    }
+    if node.Right != nil {
+        visitNode(node.Right, new_accu, sum)
+    }
+}
+@ %def visitNode
+The function [[visitNode]] visits a node given by the first parameter [[node]];
+the second parameter [[accu]] is the accumulated value before visiting this
+node; the third parameter [[sum]] is the result so far.
+
+The first thing the function does is to calculate the new [[accu]] according to
+the above description. Then if the node is a leaf node, it adds the new [[accu]]
+to the result [[sum]]. Otherwise, it is calling itself on the left and right
+child of the current node if they exist.
+
+<<Define sumNumbers function>>=
+func sumNumbers(root *TreeNode) int {
+    if root == nil {
+        return 0
+    }
+    sum := 0
+    visitNode(root, 0, &sum)
+    return sum
+}
+@ %def sumNumbers
+The function [[sumNumbers]] visits every node in the tree, starting from the
+[[root]]. It returns the result [[sum]].
+We have to explicitly check the case where [[root]] is [[nil]], since
+[[visitNode]] access [[Val]] without check whether the node is [[nil]] or not.
+If [[root]] is nil, i.e., an empty tree, the function returns 0.
+
+\subsection{Put Everything Together}
+<<*>>=
+<<Define tree node structure>>
+<<Define visitNode function>>
+<<Define sumNumbers function>>
+

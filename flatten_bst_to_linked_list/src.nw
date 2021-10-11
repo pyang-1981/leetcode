@@ -1,0 +1,79 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+\section{Problem description}
+Given a binary tree, flatten it to a linked list in-place.
+
+\subsection{Example}
+Given the following tree:
+
+\begin{verbatim}
+     1
+    / \
+   2   5
+  / \   \
+ 3   4   6
+\end{verbatim}
+
+The flattened tree should look like:
+\begin{verbatim}
+1
+ \
+  2
+   \
+    3
+     \
+      4
+       \
+        5
+         \
+          6
+\end{verbatim}
+
+\section{Solution}
+We flatten a binary tree recursively, i.e. starting from a node, we first
+flatten the left subtree, then the right subtree. Once done, link the flattened
+left substree as the right child of the node, then link the flattened right
+subtree as the right child of the last node of the flattened left subtree.
+
+<<<TreeNode Definition>>=
+tyee TreeNode struct {
+    Val int
+    Left *TreeNode
+    Right *TreeNode
+}
+@ %def TreeNode
+
+<<flatten Function Definition>>=
+func flatten(root *TreeNode) {
+    if root == nil {
+        return
+    }
+    var flatten_subtree func(node *TreeNode) *TreeNode
+    flatten_subtree = func(node *TreeNode) *TreeNode {
+        if node.Left == nil && node.Right == nil {
+            return node
+        }
+        if node.Left == nil {
+            last := flatten_subtree(node.Right)
+            return last;
+        }
+        if node.Right == nil {
+            last := flatten_subtree(node.Left)
+            node.Right = node.Left
+            node.Left = nil
+            return last;
+        }
+        left_last := flatten_subtree(node.Left)
+        right_last := flatten_subtree(node.Right)
+        tmp := node.Right
+        node.Right = node.Left
+        left_last.Right = tmp
+        node.Left = nil
+        return right_last
+    }
+
+    flatten_subtree(root)
+}
+@ %def flatten
+
+

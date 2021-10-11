@@ -1,0 +1,95 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+Given preorder and inorder traversal of a tree, construct the binary tree.
+
+\textbf{Note: You may assume that duplicates do not exist in the tree}.
+
+For example, given
+
+preorder = [3,9,20,15,7]
+inorder = [9,3,15,20,7]
+
+Return the following binary tree:
+\begin{verbatim}
+    3
+   / \
+  9  20
+    /  \
+   15   7
+\end{verbatim}
+
+\section{Solution}
+The first element in the preorder sequence is the root of the tree/subtree
+formed by that sequence. Once we find the root, we search the inorder sequence,
+the subsequence that is on the left of the root forms the left subtree, and the
+subsequence that is on the right of the root forms the right subtree. Then for
+the left subtree and right subtree we apply the above description recursively to
+find their roots, and so on.
+
+\subsection{Tree node structure}
+The binary tree structure is defined as follows.
+<<Define tree node structure>>=
+type TreeNode struct {
+  Val int
+  Left *TreeNode
+  Right *TreeNode
+}
+
+@
+\subsection{Algorithm Implementation}
+<<Define build subtree function>>=
+func buildSubTree(preOrder, inOrder []int) *TreeNode {
+  root := 0
+  rootIndex := 0
+  found := false
+  var leftInOrder, rightInOrder []int
+
+  for _, r := range preOrder {
+    for i, v := range inOrder {
+      if r == v {
+        root = r
+        rootIndex = i
+        found = true
+        break
+      }
+    }
+    if found {
+      break
+    }
+  }
+
+  leftInOrder = inOrder[0: rootIndex]
+  rightInOrder = inOrder[rootIndex + 1:]
+
+  rootNode := &TreeNode{Val: root, Left: nil, Right: nil}
+  if len(leftInOrder) > 0 {
+    leftNode := buildSubTree(preOrder, leftInOrder)
+    rootNode.Left = leftNode
+  }
+  if len(rightInOrder) > 0 {
+    rightNode := buildSubTree(preOrder, rightInOrder)
+    rootNode.Right = rightNode
+  }
+
+  return rootNode
+}
+
+@
+\subsection{Testing}
+<<*>>=
+package main
+
+import (
+  "fmt"
+)
+
+<<Define tree node structure>>
+
+<<Define build subtree function>> 
+
+func main() {
+  r := buildSubTree([]int{3, 9, 20, 15, 7}, []int{9, 3, 15, 20, 7})
+  fmt.Println(r)
+}

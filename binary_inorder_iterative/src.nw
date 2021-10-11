@@ -1,0 +1,83 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given a binary tree, return the inorder traversal of its nodes' values.
+
+Example:
+\begin{verbatim}
+Input: [1,null,2,3]
+   1
+    \
+     2
+    /
+   3
+
+Output: [1,3,2]
+\end{verbatim}
+
+Follow up: Recursive solution is trivial, could you do it iteratively?
+
+\section{Solution}
+Starting from the root of the binary tree, find the leftmost descendant. Along
+the way, push the nodes onto a stack. We can this step ``seeking left'' Once we
+find the leftmost node, pop it from the stack and append it to the output array.
+If the leftmost node has a right child, push the right child onto the stack and
+start ``seeking left'' again from the right child. This is give us the next
+leftmost node, repeat the above description for the new leftmost node again. If
+the leftmost node does not have a right child, pop another node from the stack.
+This poped node is the new leftmost node, repeat the above description again.
+This process runs until the stack is empty.
+
+In sum, the above process finds the leftmost node in turn and append it to the
+output array. Thus we can call inorder traversal the ``leftmost order''
+traversal.
+
+\subsection{Implementation}
+Let's implement the above algorithm.
+<<Define inorder traversal function>>=
+type TreeNode struct {
+    Val int
+    Left *TreeNode
+    Right *TreeNode
+}
+
+func inorderTraversal(root *TreeNode) []int {
+    res := []int{}
+    st := stack.New()
+    
+    if root != nil {
+        st.Push(root)
+    }
+
+    for st.Len() > 0 {
+        for top := st.Peek().(*TreeNode); top.Left != nil; {
+            st.Push(top.Left)
+            top = st.Peek().(*TreeNode)
+        }
+        top := st.Pop().(*TreeNode)
+        res = append(res, top.Val)
+        if top.Right != nil {
+            st.Push(top.Right)
+            continue
+        } else {
+            if st.Len() > 0 {
+                for st.Len() > 0 {
+                    top = st.Pop().(*TreeNode)
+                    res = append(res, top.Val)
+                    if top.Right != nil {
+                        st.Push(top.Right)
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    return res
+}
+

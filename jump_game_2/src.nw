@@ -1,0 +1,75 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+
+\section{Problem description}
+Given an array of non-negative integers nums, you are initially positioned at the first index of the array.
+Each element in the array represents your maximum jump length at that position.
+Your goal is to reach the last index in the minimum number of jumps.
+You can assume that you can always reach the last index.
+
+\section{Solution}
+The straight forward solution is a breath first search. When we reach the end of
+the array, we have the minimum number of jumps. The time complexity of the
+algorithm is $O(n^2)$, since at each position, we have to consider at most $n$
+candidates for the next step. The space complexity is $O(n)$, since we have to
+use a queue to store the candidates.
+
+But there is an efficient solution where the time complexity is $O(n)$, and the
+space complexity is $O(1)$.
+
+The idea is that at each position $i$, we can make a range of possible next steps
+from $i + 1$ to $i + arr[i]$. If this range includes $n - 1$, i.e., the end
+position, we can reach the end from current position in one step. We scan the
+array from left to right, and suppose we are at position $i$ at the moment.
+For each position within $[i + 1, i + arr[i]]$ we calculate the range. If the
+range includes the end position, we are done. If not, we have to choose one
+position within the range as our next step. Which one to choose? We should
+choose a position $j$ which gives us the maximum $j + arr[j]$.
+
+Why? Since we already considered every position in the range $[i + 1, i +
+arr[i]]$, the remaining positions to be considered is $[i + arr[i] + 1, n - 1]$,
+and the next steps from position $j$ covers the most of this unconsidered range,
+that is, it is at least as good as any other positions in the range $[i + 1, i +
+arr[i]]$.
+
+We repeat the above process until we find the position whose range include the
+end position, and we have the minimum jump number.
+
+<<function jump>>=
+int jump(vector<int> &num)
+{
+    if (num.size() == 1) return 0;
+
+    int jump = 0;
+    int curPos = 0, curMin = curPos + 1, curMax = curPos + num[curPos];
+    while (true)
+    {
+        if (num.size() - 1 >= curMin && num.size() - 1 <= curMax) return jump + 1;
+        int next, max = 0;
+        for (int i = curMin; i < curMax; i++)
+        {
+          if (i + num[i] > max)
+          {
+              next = i;
+              max = i + num[i];
+          }
+        }
+        curPos = next;
+        curMin = next + 1;
+        curMax = next + num[next];
+        jump++;
+    }
+    return -1;
+}
+@ %def jump
+
+
+@
+\end{document}
+

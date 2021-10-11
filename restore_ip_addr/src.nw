@@ -1,0 +1,92 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given a string containing only digits, restore it by returning all possible valid IP address combinations.
+
+\subsection{Example}
+
+\fbox{
+    \begin{tabular} {ll}
+        Input: & ``25525511135"\\
+        Output: & [``255.255.11.135", ``255.255.111.35"]
+    \end{tabular}
+}
+
+\section{Solution}
+Let $f(s[m:], n)$ represents all the valid IP suffixes formed by the string [[s[m:]]]
+that contain [[n]] components. For example, $f(s[m:], 4)$ represents all the valid
+IP suffixes formed by the string [[s[m:]]] that contain 4 components, i.e. the full
+IP addresses. Similarly, $f(s[m:], 3)$ represents all the valid IP suffixes formed
+by the string [[s[m:]]] that contain 3 components, i.e, the IP suffixes without the
+first component, etc. We have
+\begin{equation}
+f(s[m:], n) = \begin{cases}
+                  s[m] + ``." + f(s[m+1:], n-1)\\
+                  s[m:m+2] + ``." + f(s[m+2:], n-1)\\
+                  s[m:m+3] + ``." + f(s[m+3:], n-1)
+              \end{cases}
+\end{equation}
+Here, we abuse the second ``+" in each equation to denote the prepending of the
+prefix to each element in the returned suffix set.
+
+\subsection{Boundary condition}
+$f(s[m:], 1) = s[m:]$
+
+\subsection{Error condition}
+$f(s[m:], 1) = \{\}$ if $len(s[m:]) > 3 || (s[m] == '0' \&\& len(s[m:]) > 1) ||
+atoi(s[m:]) > 255$.
+
+\subsection{Implementation}
+Now let's implement the function $f(s[m:], n)$.
+<<Define IP restore function>>=
+func restoreIp(s []rune, m, n int) []string {
+    if m >= len(s) {
+        return []string{}
+    }
+    if n == 1 {
+        if len(s[m:]) > 3 {
+            return []string{}
+        } else if s[m] == '0' && len(s[m:]) > 1 {
+            return []string{}
+        } else if num, _ := strconv.Atoi(string(s[m:])); num > 255 {
+            return []string{}
+        } else {
+            return []string{string(s[m:])}
+        }
+    }
+
+    r1 := []string{}
+    for _, suffix := range restoreIp(s, m+1, n-1) {
+        r1 = append(r1, string(s[m]) + "." + suffix)
+    }
+
+    if s[m] == '0' || m ==  len(s) - 1 {
+        return r1
+    }
+
+    r2 := []string{}
+    for _, suffix := range restoreIp(s, m+2, n-1) {
+        r2 = append(r2, string(s[m:m+2]) + "." + suffix)
+    }
+
+    if m == len(s) - 2 {
+        return append(r1, r2...)
+    }
+
+    r3 := []string{}
+    if num, _ := strconv.Atoi(string(s[m:m+3])); num <= 255 {
+        for _, suffix :=  range restoreIp(s, m+3, n-1) {
+            r3 = append(r3, string(s[m:m+3]) + "." + suffix)
+        }
+    }
+
+    return append(append(r1, r2...), r3...)
+}
+
+
+

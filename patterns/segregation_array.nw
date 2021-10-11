@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Scan an array or other sequence with input iterators, and partition the array
+into two parts: the left part contains all the elements that satisfy a certain
+condition, and the right part contains the rest of the elements.
+
+\section{Pattern}
+Segregating an sequence based on a certain condition is a very common problem.
+For example, one would want to put all the positive elements before all the
+other elements in an array.
+<<utility>>=
+template<class InputIterator, class UnaryFunction>
+void Segregate(InputIterator begin, InputIterator end, UnaryFunction func)
+{
+  InputIterator cur_end = begin;
+  for (InputIterator it = begin; it != end; ++it)
+  {
+    if(func(*it)) {
+      swap(*it, *cur_end);
+      ++cur_end;
+    }
+  }
+}
+@ %def Segregate
+The above function tries to segregate the sequence [begin, end) based on the
+condition specified by [[func]]. It keeps track of a iterator (position)
+[[cur_end]] that should point to the position to which we need to put the next
+element that satisfies the condition. Once we find such an element, we swap the
+element with the element at [[cur_end]] to put the former element in the correct
+location, and increase [[cur_end]] to point to the next position.
+
+@
+\end{document}
+

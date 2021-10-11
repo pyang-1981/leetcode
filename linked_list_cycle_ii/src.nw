@@ -1,0 +1,104 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Given a non-empty string [[s]] and a dictionary [[wordDict]] containing a list
+of non-empty words, determine if [[s]] can be segmented into a space-separated
+sequence of one or more dictionary workds.
+
+\textbf{Note}:
+\begin{itemize}
+  \item The same word in the dictionary may be reused multiple times in the
+    segmentation.
+  \item You may assume the dictionary does not contain duplicate words.
+  \end{itemize}
+
+\section{Solution}
+We can use dynamic programming to solve this problem. The key observation is
+that when trying to match a larger prefix of [[s]] with words in the dictionary, we
+can reuse the results for matching shorter prefixes of [[s]].
+  
+we start from matching the shortest prefix of [[s]], i.e., the first letter. If
+it does not match any words in the dictionary, we proceed to the second shortest
+prefix of [[s]]. Otherwise, we use this prefix to match a longer prefix by
+dividing the longer prefix into the current prefix, and the remaining portion.
+If the remaining portion matches a word in the dictionary, the longer prefix is
+matched. Otherwise, we try to divide a even longer prefix. The whole process
+runs until the prefix that can be matched is the entire [[s]].
+
+We use the following function to quickly tell whether a substring of [[s]]
+matches a word in the dictionary.
+<<Function contain>>=
+func golang_contain(s string, wordDict []string) bool {
+    for _, w := range wordDict {
+        if s == w {
+            return true
+        }
+    }
+    return false  
+}
+
+let ocaml_contain s wordDict =
+    List.mem s wordDict
+
+@ %def golang_contain ocaml_contain
+
+Then, the solution can be implemented as follows:
+<<Function wordBreak>>=
+func golang_wordBreak(s string, wordDict []string) bool {
+    runes := []rune(s)
+    matched := make([]bool, len(runes))
+
+    for i := 0; i < len(runes); i++ {
+        if matched[i] == false && golang_contain(string(runes[0:i+1]), wordDict) {
+            matched[i] = true
+        }  
+        if matched[i] {
+            for j := i + 1; j < len(runes); j++ {
+                if golang_contain(string(runes[i+1:j+1]), wordDict) {
+                    matched[j] = true
+                    if j == len(runes) - 1 {
+                        return true
+                    }
+                }
+            }
+        }  
+    }
+    return matched[len(runes) - 1]
+}
+
+let ocaml_wordBreak s wordDict =
+    let matched: bool array = Array.create (String.length s) false in
+    let rec matchPrefix i =
+        let rec probe j =
+            if j >= String.length s then ()
+            else (
+                if matched.(j) = false && ocaml_contain (String.sub s (i+1) (j-i)) wordDict
+                then matched.(j) <- true;
+                if matched.(j) = true then probe (j+1)
+            )
+        in
+            if i >= String.length s then ()
+            else (
+                if matched.(i) = false && ocaml_contain (String.sub s 0 (i+1)) wordDict
+                then matched.(i) <- true;
+                if matched.(i) = true then probe (i+1);
+                matchPrefix (i+1)
+            )
+    in
+        matchPrefix 0
+        matched.(String.length s - 1)
+    ;;
+@ %def golang_wordBreak ocaml_wordBreak
+
+
+@
+\end{document}
+

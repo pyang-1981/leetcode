@@ -1,0 +1,67 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+A linked list is given such that each node contains an additional random pointer which could point to any node in the list or null.
+
+{\centering\textbf{Return a deep copy of the list}.\par}
+
+The Linked List is represented in the input/output as a list of n nodes. Each node is represented as a pair of $[val, random\_index]$ where:
+
+\begin{itemize}
+  \item val: an integer representing Node.val.
+  \item random\_index: the index of the node (range from 0 to n-1) where random pointer points to, or null if it does not point to any node.
+\end{itemize}
+
+\section{Solution}
+We've seen a similar problem where the [[Val]] of a node is unique so that we
+can use it as a key to find the copy of a certain node. However, here the
+[[Val]] is not unique, and cannot be used as the key. Instead, we will use the
+address of a node as the key. Below is the solution.
+
+<<Node definition>>=
+type Node struct {
+    Val int
+    Next *Node
+    Random *Node
+}
+@ %def Node
+
+<<Function visitNode>>=
+func visitNode (curNode *Node, m map[*Node]*Node) *Node {
+    if curNode == nil {
+        return nil
+    }
+    if _, ok := m[curNode]; ok {
+        return m[curNode]
+    }
+
+    cp := &Node{Val: curNode.Val, Next: nil, Random: nil}
+    m[curNode] = cp
+
+    next_cp := visitNode(curNode.Next, m)
+    random_cp := visitNode(curNode.Random, m)
+    cp.Next = next_cp
+    cp.Random = random_cp
+
+    return cp
+}
+@ %def visitNode
+
+<<Function copyRandomList>>=
+func copyRandomList(head *Node) *Node {
+    m := make(map[*Node]*Node)
+    return visitNode(head, m)
+}
+@ %def copyRandomList
+
+@
+\end{document}
+

@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode,longxref,longchunks}
+\usepackage{graphicx}
+\usepackage{float}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Given a string s, partition s such that every substring of the partition is a
+palindrome. Return all possible palindrome partitioning of s.
+
+\subsection{Example}
+\begin{verbatim}
+Input: 'aab'
+Output:
+[
+    ['aa', 'b'],
+    ['a', 'a', 'b']
+]
+\end{verbatim}
+
+\section{Solution}
+We can solve the problem recursively, that is, for a suffix of the input string,
+try to find the starting palindrome, then exclude that palindrome from the
+suffix, and start to find the starting palindrome again for the remaining
+suffix. The whole process starts with the suffix that is the entire input
+string as shown in the figure \ref{fig:recursive process}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{./recursive.png}
+  \caption{The recursive process to solve the problem}
+  \label{fig:recursive process}
+\end{figure}
+
+Note that for the starting palindrome, there may be multiple choices with
+increasing length, each will start a separate recursive process with the
+corresponding suffix.
+
+The recursive process ends when the suffix has no starting palindrome or the
+suffix has one starting palindrome that is itself.
+
+Now, how do we find the starting palindrome? We scan from the first
+character in the suffix, and try to find the same character later. Once found,
+we have a candidate for our starting palindrome. To tell exactly whether it is a
+palindrome, we have to compare the characters in the corresponding positions,
+and tell whether they are equal as shown in the figure \ref{fig:starting
+  palindrome}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{./starting_palindrome.png}
+  \caption{Obtaining the starting palindrome}
+  \label{fig:starting palindrome}
+\end{figure}
+
+Note that, we are scanning further and further in order to find palindromes with
+increasing lengths.
+
+Now let's define our function to determine whether a substring is a palindrome
+or not.
+<<Function isPalindrome>>=
+func isPalindrome(i, j int, s string) bool {
+    // Since we know s[i] and s[j] are equal,
+    // we start to compare other characters.
+    r := []rune(s)
+    i = i + 1
+    j = j - 1
+    for i <= j {
+        if r[i] != r[j] {
+            return false
+        }
+        i = i + 1
+        j = j - 1
+    }
+    return true
+}
+@  %def isPalindrome
+The function takes two indices [[i]] and [[j]], which mark the beginning and
+ending positions of a possible palindrome; the third parameter [[s]] is the
+input string.
+
+Now let's define the recursive process that searches the starting palindrome in a
+suffix.
+<<Function findPalindrome>>=
+func findPalindrome(i int, s string, trace *[]string, res *[][]string) {
+    j := i
+    r := []rune(s)
+    for j < len(r) {
+        if r[i] == r[j] && isPalindrome(i, j, s) {
+            *trace = append(*trace, string(r[i:j+1]))
+            if j == len(r) - 1 {
+                // found one partition
+                t := make([]string, len(*trace))
+                copy(t, *trace)
+                *res = append(*res, t)
+            } else {
+                findPalindrome(j + 1, s, trace, res)
+            }
+            *trace = (*trace)[0:len(*trace) - 1]
+        }
+        j = j + 1
+    }
+}
+@  %def findPalindrome
+This function is a little hard to understand. It takes parameter [[i]] as the
+starting index of the suffix, parameter [[s]] as the input string, parameter
+[[trace]] as a slice storing the palindromes found so far during the recursive
+process, and parameter [[res]] as a slice storing the partition found.
+
+It starts the scan from the starting index [[i]]. Once it finds a character at
+index [[j]] that is equal to the one at index [[i]], it checks whether the
+substring from [[i]] to [[j]] is a palindrome. If yes, it adds the palindrome to
+[[trace]]. Furthermore, if the palindrome is the entire suffix, it finds a
+partition and adds it to [[res]], otherwise, it recursively finds the starting
+palindrome in the suffix starting at [[j+ 1]] by calling the function itself.
+In all cases, if it is done with the current palindrome, it removes the
+palindrome from [[trace]], and scans for a larger starting palindrome by increasing
+[[j]] by 1.
+
+The recursion is bound to end, since the smallest suffix is a single character
+which is a palindrome. In this case, the function finds a partition and
+won't call itself again. Or it will end up with a suffix with no starting
+palindrome, and it will not call itself in this case either.
+
+Now let's define the entry function that finds all possible palindrome
+partitions.
+<<Function partition>>=
+func partition(s string) [][]string {
+    res := [][]string{}
+    trace := []string{}
+    findPalindrome(0, s, &trace, &res)
+    return res
+}
+@ %def partition
+
+\section{Put Everything Together}
+<<*>>=
+<<Function isPalindrome>>
+<<Function findPalindrome>>
+<<Function partition>>
+  
+@
+\end{document}
+

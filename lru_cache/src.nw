@@ -1,0 +1,213 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Design a data structure that follows the constraints of a Least Recently Used
+(LRU) cache.
+
+Implement the LRUCache class:
+
+\begin{itemize}
+\item LRUCache(int capacity) Initialize the LRU cache with positive size capacity.
+\item int get(int key) Return the value of the key if the key exists, otherwise return -1.
+\item void put(int key, int value) Update the value of the key if the key exists. Otherwise, add the key-value pair to the cache. If the number of keys exceeds the capacity from this operation, evict the least recently used key.
+\end{itemize}
+
+
+Follow up:
+Could you do \textit{get} and \textit{put} in O(1) time complexity.
+
+
+\section{Solution}
+In order to achieve O(1) time complexity for \textit{get} and \textit{put}, we
+need to map key to the value using a hash map. We also need some extra data
+structure so that when we do \textit{put}, and the hashmap is full, we can
+quickly find the key that is least recently used.
+
+We choose a double-linked list as that data structure. We maintain the following
+invariant for the double-linked list, i.e., the first node in the list
+contains the least recently used key. Thus it only takes O(1) time to find such
+a key when we want to evict it from the hashmap.
+
+In order to achieve this, whenever we access a key-value pair using
+\textit{get}, we locate the node containing that key in the double-linked
+list, and move it to the tail of the list. This is why we need a double-linked
+list instead of a single-linked list, since we need to delete that node and append it
+to the tail of the list. A single-linked list would need us to store the pointer
+to the node before the node we want to delete.  A double-linked list just needs
+us to directly store the pointer to the node we want to delete. 
+In order to locate that pointer in O(1) time, we store the pointer in the hashmap along with the
+key-value pair.
+
+\subsection{golang}
+We have the following golang implementation.
+
+<<Double-linked list definitions>>=
+type node struct {
+  prev *node
+  next *node
+  key  int
+}
+
+
+type dllist struct {
+  head *node
+  tail *node
+}
+
+func (this *dllist) append(n *node) {
+  if this.head == nil {
+    this.head = n
+    this.tail = n
+    return
+  }
+  this.tail.next = n
+  n.prev = this.tail
+  this.tail = n
+}
+
+func (this *dllist) remove(n *node) {
+  prev := n.prev
+  if prev == nil {
+    this.head = n.next
+  } else {
+    prev.next = n.next
+  }
+  if n.next == nil {
+    this.tail = prev
+  } else {
+    n.next.prev = prev
+  }
+
+  n.prev = nil
+  n.next = nil
+}
+
+@ %def node dllist append remove
+The above double-linked list definition defines the double-linked list itself,
+and two of its operations: [[append]] appends a node to the tail of the list;
+[[remove]] removes a node from the list.
+
+<<LRU cache definitions>>=
+type entry struct {
+  val int
+  n   *node
+}
+
+type LRUCache struct {
+  hashmap map[int]entry
+  log     dllist
+  cap     int
+  size    int
+}
+
+func Constructor(capacity int) LRUCache {
+  return LRUCache{make(map[int]entry), dllist{nil, nil}, capacity, 0}
+}
+
+func (this *LRUCache) Get(key int) int {
+  e, ok := this.hashmap[key]
+  if !ok {
+    return -1
+  }
+  this.log.remove(e.n)
+  this.log.append(e.n)
+  return e.val
+}
+
+func (this *LRUCache) Put(key int, value int)  {
+  e, ok := this.hashmap[key]
+  if !ok {
+    if this.size == this.cap {
+      n := this.log.head
+      this.log.remove(n)
+      delete(this.hashmap, n.key)
+      this.size--
+    }
+    n := node{nil, nil, key}
+    this.log.append(&n)
+    this.hashmap[key] = entry{value, &n}
+    this.size++
+    return
+  }
+  this.log.remove(e.n)
+  this.log.append(e.n)
+  this.hashmap[key] = entry{value, e.n}
+}
+@ %def entry LRUCache Constructor Get Put
+
+One thing should be noted is that \textit{Put} moves an existing key to the tail
+of the double-linked list.
+
+\subsection{ocaml}
+In order to achieve the optimal efficiency, we cannot use ocaml's builtin list,
+which is only a single-linked list and is immutable.
+<<Double-linked list ocaml definitions>>=
+type 'a pointer = Null | Pointer of 'a ref
+
+let (!^) = function
+  | Null -> invalid_arg "Dereferencing an Null pointer"
+  | Pointer r -> !r
+
+let (^:=) p v =
+  match p with  
+  | Null -> invalid_arg "Assigning an Null pointer"
+  | Pointer r -> r := v
+
+@ %def pointer !^ ^:=
+The above code snippet defines a pointer type and two pointer operations. The pointer type is an extension of the builtin [[ref]] type. Since ocaml does not allow null [[ref]], we define a [[pointer]] wrapper type with an extra [[Null]] value. The two operations are [[!^]] which dereferences a pointer, and [[^:=]] which assign a value to the memory pointed to.
+
+<<Double-linked list ocaml definitions>>=
+type 'a onode = {
+  mutable data: 'a;
+  mutable next: 'a node pointer;
+  mutable prev: 'a node pointer;
+}
+
+type 'a odllist = {
+  mutable head: 'a node pointer;
+  mutable tail: 'a node pointer;
+}
+
+let ogetNode d =
+  Pointer(ref { data = d; next = Null; prev = Null; })
+
+let oappend l n =
+  match l with
+  |  {head = h; tail = t} ->
+    match h with
+    | Null -> begin l.head <- n; l.tail <- n; l end
+    | _ ->  begin (!^(l.tail)).next <- n; (!^n).prev <- l.tail;  l.tail <- n; l end
+
+let oremove l n =
+  match n with
+  | Pointer {contents = {next = e; prev = p}} ->
+    if p = Null then l.head <- e
+    else (!^p).next <- e;
+    if e = Null then l.tail <- p
+    else (!^e).prev <- p;
+    (!^n).next <- Null;
+    (!^n).prev <- Null;
+    l    
+    | Null  -> l
+
+@ %def onode odllist ogetNode oappend oremove
+The above code snippet defines the node, and the double-linked list, plus three
+operations. [[ogetNode]] returns a new node with data specified as its sole
+argument. The rest is the direct counterpart to the golang implementation.
+
+
+<<*>>=
+<<Double-linked list definitions>>
+<<LRU cache definitions>>
+
+@
+\end{document}
+

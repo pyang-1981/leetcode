@@ -1,0 +1,148 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+
+Given a 2D board containing 'X' and 'O' (the letter O), capture all regions
+surrounded by 'X'.
+
+A region is captured by flipping all 'O's into 'X's in that surrounded region.
+
+\subsection{Example}
+\begin{verbatim}
+xxxx
+xoox
+xxox
+xoxx
+\end{verbatim}
+After running your function, the board should be
+\begin{verbatim}
+xxxx
+xxxx
+xxxx
+xoxx
+\end{verbatim}
+Surrounded regions shouldn't be on the border, which means that any 'O' on the
+border are not flipped to 'X'. Any 'O' that is not on the border and it is not
+connected to an 'O' on the border will be flipped to 'X'. Two cells are
+connected if they are adjacent cells connected horizontally or vertically.
+
+\section{Solution}
+We model the 2D board as a graph. Each cell is a node in the graph. Two adjacent
+cells are connected nodes in the graph.
+
+After this transformation, the problem can be solved by doing the depth first search
+in the graph, starting with a un-visited 'O' node. If we encounter an 'O' node,
+we mark that 'O' node as visited, and continue that path, if we encounter a 'X' node, we backtrace and do not
+explore that path further. In addition, if we encounter an 'O' node on the
+border, we set a flag indicating that all 'O' nodes encountered during the
+search will not be flipped into 'X' nodes, otherwise all 'O' nodes encountered
+during the search will be flipped. Once we finish the search, we pick another un-visisted 'O' node and start another
+depth first search again. We repeats this process until there is no un-visited 'O'
+node left.
+
+<<<Define visitNode function>>=
+func visitNode(i, j int, board [][]byte, visited [][]bool, searched *([]*byte), escaped *bool) {
+    nrow := len(board)
+    ncol := len(board[0])
+
+    visited[i][j] = true
+    *searched = append(*searched, &board[i][j])
+
+    if i == 0 || i == nrow - 1 || j == 0 || j == ncol - 1 {
+        *escaped = true 
+    }
+
+    if i > 0 && visited[i - 1][j] == false && board[i - 1][j] == 'O' {
+        visitNode(i - 1, j, board, visited, searched, escaped)
+    }
+
+    if i < nrow - 1 && visited[i + 1][j] == false && board[i + 1][j] == 'O' {
+        visitNode(i + 1, j, board, visited, searched, escaped)
+    }
+
+    if j > 0 && visited[i][j - 1] == false && board[i][j - 1] == 'O' {
+        visitNode(i, j - 1, board, visited, searched, escaped)
+    }
+
+    if j < ncol - 1 && visited[i][j + 1] == false && board[i][j + 1] == 'O' {
+        visitNode(i, j + 1, board, visited, searched, escaped)
+    }
+}
+@  %def visitNode
+The [[visitNode]] recursively visits each un-visited 'O' node. Parameters [[i]]
+and [[j]] represent the indices of the current node; [[board]] is the board
+itself; [[visited]] is a two-dimensional array of flags indicating whether a
+node is visited or not. Initially, it should be set to false for all the
+elements in it; [[searched]] contains the address of all the 'O' nodes searched;
+[[escaped]] is a flag indicating whether we encounter any 'O' node on the border
+in the search.
+
+Note that the function recursively visits the four neighbors of the current
+node, if some conditions are met, i.e, a neighbor should not be outside of the
+board, should not be visited already, and should be an 'O' node.
+
+Also note that [[searched]] is passed by reference (via pointer), since we need
+to expand the slice, not just modifying the element in it. This allow the
+expansion to be seen by the caller of [[visitNode]].
+
+<<Define solve function>>=
+func solve(board [][]byte) {
+    nrow := len(board)
+    if nrow == 0 {
+        return
+    }
+    ncol := len(board[0])
+    if ncol == 0 {
+        return
+    }
+
+    visited := make([][]bool, nrow)
+    for i, _ := range visited {
+        visited[i] = make([]bool, ncol)
+    }
+    for i, _ := range visited {
+        for j, _ := range visited[i] {
+            visited[i][j] = false
+        }
+    }
+
+    for {
+        found := false
+        for i, _ := range board {
+            for j, _ := range board[i] {
+                if visited[i][j] == false && board[i][j] == 'O' {
+                    found = true
+                    searched := make(*byte[], 0, i * j)
+                    escaped := false
+                    visitNode(i, j, board, visited, &searched, escaped)
+                    if escaped == false {
+                        for k, _ := range searched {
+                            *(searched[k]) = 'X'
+                        }
+                    }
+                }
+            }
+        }
+        if found == false {
+            break
+        }
+    }
+}
+@ %def solve
+Function [[solve]] solves the problem. It first checks for 0 sized board, and
+returns immediately. For non-zero sized board, it initializes the two dimensional
+slice [[visited]] and set all the elements to false. Then it enters a infinite
+loop and looks for any un-visited 'O' node. If found, it initializes slice
+[[searched] and flag [[escaped]]], and do the depth first search starting from
+that 'O' node. After search, it checks flag [[escaped]] and flips all the 'O'
+nodes encountered in the search if [[escaped]] is false. If it cannot found any
+un-visited 'O' node, then it breaks from the infinite loop and finishes.
+
+Note that we set the capacity of slice [[searched]] to the size of the board,
+since in the worst scenario, the board has all 'O' cells.
+
+\section{Put Everything Together}
+<<*>>=
+<<<Define visitNode function>>
+<<Define solve function>>

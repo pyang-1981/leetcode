@@ -1,0 +1,95 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+A peak element is an element that is strictly greater than its neighbors.
+
+Given an integer array nums, find a peak element, and return its index. If the array contains multiple peaks, return the index to any of the peaks.
+
+You may imagine that nums[-1] = nums[n] = -inf
+
+\subsection{Constraints}
+  \begin{itemize}
+    \item 1 $\leq$ array size $\leq$ 1000
+    \item -$2^{31}$ $\leq$ n[i] $\leq$ $2^{31}$ - 1
+    \item n[i] != n[i+1] for all valid i
+  \end{itemize}
+
+\section{Solution}
+
+We can solve this problem by divide and conquer. First, find the middle of the
+array, then compare it with its neighbors:
+\begin{itemize}
+  \item If it is bigger than both of them (or one of them if on the boundary),
+    the middle element is a peak.
+  \item Else find the neighbor that is larger then the middle element. If both
+    neighbors are larger, choose any one of them. Then, repeat the process on
+    the subarray ending with this neighbor.
+\end{itemize}
+
+\subsection{golang Implementation}
+<<golang implementation>>=
+func find(num []int, low int, high int) int {
+  if low >= high {
+    return low
+  }
+  mid := (high + low) / 2
+  if mid - 1 >= 0 && num[mid] > num[mid - 1] && mid + 1 <= len(num) - 1 &&
+  num[mid] > num[mid + 1] {
+    return mid
+  }
+  if mid == 0 && mid + 1 <= len(num) - 1 && num[mid] > num[mid + 1] {
+    return mid
+  }
+  if mid + 1 >= len(num) && mid - 1 >= 0 && num[mid] > num[mid - 1] {
+    return mid
+  }
+  if mid + 1 <= len(num) - 1 && num[mid] < num[mid + 1] {
+    return find(num, mid + 1, high)
+  }
+  if mid - 1 >= 0 && num[mid] < num[mid - 1] {
+    return find(num, low, mid - 1)
+  }
+}
+func findPeakElement(num []int) int {
+  return find(num, 0, len(num) - 1)
+}
+@ %def find findPeakElement
+
+\subsection{ocaml Implementation}
+<<ocaml implementation>>=
+let rec ocaml_find num low high =
+  if low >= high then low
+  else begin
+    let mid = (low + high) / 2 in
+      if mid - 1 >= 0 && num.(mid) > num.(mid - 1) && mid + 1 <= (Array.length num) - 1 && num.(mid) > num.(mid + 1) then mid
+      else begin
+        if mid - 1 < 0 && mid + 1 <= (Array.length num) - 1 && num.(mid) > num.(mid + 1) then mid
+        else begin
+          if mid - 1 > 0 && mid + 1 >= Array.length num && num.(mid) > num.(mid - 1) then mid
+          else begin
+            if mid - 1 >= 0 && num.(mid) < num.(mid - 1) then ocaml_find num low (mid - 1)
+            else begin
+              if mid + 1 <= (Array.length num) - 1 && num.(mid) < num.(mid + 1)
+              then ocaml_find num (mid + 1) high
+              else -1
+            end
+          end
+        end
+      end
+   end
+
+let ocaml_findPeakElement num =
+  ocaml_find num 0 ((Array.length num) - 1)
+@ %def ocaml_find ocaml_findPeakElement
+
+@
+\end{document}
+

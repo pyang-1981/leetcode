@@ -1,0 +1,229 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Given a singly linked list L: $L_0 -> L_1 -> L_2 -> ... -> L_{n-1} -> L_{n}$,
+reorder it to: $L_0 -> L_n -> L_1 -> L_{n-1} -> ...$
+
+\section{Solution}
+For a given list, fetch the first and the last node, create new list with the
+first and last node, and append this new list to the existing output list. Then
+do the same to the remaining input list. 
+
+The process involves walk the input list multiple times to get the first and
+the last nodes. In order to accelerate this process, we can use a map to
+remember the node at a specific location when we first walk the input list to get the
+last node.
+
+\subsection{golang}
+<<List node definition>>=
+type ListNode struct {
+  Val int
+  Next *ListNode
+}
+@ %def ListNode
+
+<<function reorderList definition>>=
+func reorderList(head *ListNode) {
+  var output *ListNode
+  var tail   *ListNode
+  var m map[int]*ListNode
+
+  // Get the length of the input list
+  // and initialize the map.
+  p := head
+  l := 0
+  for p != nil {
+    m[l] = p
+    l = l + 1
+    p = p.Next
+  }
+
+  h := 0
+  t := l - 1
+  for l != 0 {
+    if tail == nil {
+      tail = m[h]
+      output = tail
+    } else {
+      tail.Next = m[h]
+      tail = m[h]
+    }
+    if l == 1 {
+      tail.Next = nil
+      l = l - 1
+    } else {
+      tail.Next = m[t]
+      tail = m[t]
+      tail.Next = nil
+      l = l -2
+      h = h + 1
+      t = t - 1
+    }
+  }
+  return output
+}
+@ %def reorderList
+
+\subsection{ocaml}
+\subsubsection{Immutable Version}
+<<function hd definition>>=
+let hd = function
+  | [] -> None
+  | h :: tail -> Some h
+@ %def hd
+
+<<function last definition>>=
+let rec last = function
+  | [] -> None
+  | h :: [] -> Some h
+  | h :: tail -> last tail 
+@ %def last
+
+<<function at definition>>=
+let rec at i = function
+  | [] -> None
+  | h :: tail ->
+      if i = 0 then Some h
+      else at (i - 1) tail
+@ %def at
+
+<<function len definition>>=
+let rec len = function
+  | [] -> 0
+  | h :: tail -> 1 + len tail
+
+<<function innerReorderList definition>>=
+let rec innerReorderList i j = function
+  | [] -> []
+  | h :: tail as l ->
+    if i = j then
+      match at i l with
+        | Some x -> [x]
+        | None -> []
+    else if i > j then []
+    else
+      let at_i = at i l in
+      let at_j = at j l in
+        match at_i, at_j with
+          | Some x, Some y -> x :: [y] @ (innerReorderList (i + 1) (j - 1) l)
+          | _ -> []
+@ %def innerReorderList
+
+<<function reorderList definition>>=
+let reorderList = function
+  | [] -> []
+  | h :: tail as l -> innerReorderList 0 ((len l) -1) l
+@ %def reorderList
+
+The above algorithm is not efficient in that function [[at]] traverses the list
+every time when we try to get an element at a specific location. We can improve
+that by traversing the list once, and remember the location of every element.
+Then, we can just return the element using the remembered location.
+
+<<function remember definition>>=
+let remember l =
+  let module M = Map.Make(struct type t = int let compare = Pervasives.compare end) in
+  let m = ref M.empty in
+  let rec remember_one i = function
+    | [] -> !m
+    | h :: tail -> m := M.add i h !m in remember_one (i + 1) tail
+  in
+    let m = remember_one 0 l in
+      fun i -> M.find_opt i m
+@ %def remember
+
+Function [[remember]] accepts a list [[l]] and returns a function that accepts an
+integer [[i]] and returns the element at location [[i]] in list [[l]]. It uses
+[[Map]] module to map a location to the element at that location. Note that, we
+use [[ref]] to create a reference to the map, since we have to continuously update
+it when traversing the list. Otherwise, we are just updating copies of it,
+leaving the original map empty. Also note that, the map is an internal state,
+thus does not violate the \textbf{referential transparency}.
+
+<<function innerReorderList definition>>=
+let rec innerReorderList i j at = function
+  | [] -> []
+  | h :: tail as l ->
+    if i = j then
+      match at i with
+        | Some x -> [x]
+        | None -> []
+    else if i > j then []
+    else
+      let at_i = at i in
+      let at_j = at j in
+        match at_i, at_j with
+          | Some x, Some y -> x :: [y] @ (innerReorderList (i + 1) (j - 1) at l)
+          | _ -> []
+@ %def innerReorderList
+          
+<<function reorderList definition>>=
+let reorderList l =
+  let at = remember l in
+    match l with
+      | [] -> []
+      | h :: tail as l -> innerReorderList 0 ((len l) -1) at l
+@ %def reorderList
+
+\subsubsection{Mutable Version}
+The above ocaml implementation has the same overall complexity as the golang
+implementation. However, it does make copies of the elements and create a new
+reordered list, instead of reusing the nodes of the original list, like in the
+golang implementaion. If one does not plan to use the original list after reorder, then the
+golang implementation is more efficient.
+
+In this section, we propose a mutable implementation of a linked list, and allow
+the ocaml implementation to reuse nodes as well.
+
+\paragraph{Pointer Definition}
+<<Pointer definition>>=
+type 'a pointer = Nil | Pointer of 'a ref
+@ %def Nil Pointer
+
+<<Pointer operations>>=
+let (^:=) p x =
+  match p with
+    | Nil -> invalid_arg ``Assign to Nil pointer''
+    | Pointer r -> r := x
+
+let (^!) p =
+  match p with
+    | Nil -> invalid_arg ``Dereference Nil pointer''
+    | Pointer r -> !r
+
+let new_ptr x = Pointer(ref x)
+@ %def ^:= ^! new_ptr
+
+Why do we use [[a' pointer]] instead of plain [[ref]]? Because plain [[ref]]
+does not support the notion of an empty pointer. It has to refer to something.
+However, here an empty pointer is Nil.
+
+\paragraph{List Definition}
+<<List definition>>=
+type 'a mutable_list = 'a cell pointer and 'a cell = {mutable hd: 'a; tail: 'a
+  cell pointer}
+@ %def mutable_list
+
+A [[mutable_list]] is a pointer to a [[cell]] where a [[cell]] has a mutable element
+[[hd]] and a [[tail]] pointing to the remaining of the list. Note, in this
+definition, not only the list is mutable, the element is also mutable.
+
+\paragraph{List Operations}
+<<Function append definition>>=
+let appendCell x = function
+  | Nil -> new_ptr x
+  | Pointer r -> !r.tail ^:= new_ptr x
+@ %def appendCell
+  
+
+@
+\end{document}
+

@@ -1,0 +1,162 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+\section{Problem description}
+You are given a perfect binary tree where all leaves are on the same level, and
+every parent has two children. The binary has the following definition.
+
+<<Node definition>>=
+type Node struct {
+    val   int
+    Left  *Node
+    Right *Node
+    Next  *Node
+}
+@ %def Node
+
+Populate each next pointer to point to its next right node. If there is no next right node, the next pointer should be set to NULL.
+
+Initially, all next pointers are set to NULL.
+
+\section{Solution}
+Doing a breath first search using a queue. Whenever poping a node [[curNode]]
+out of the queue, save it to a variable [[prev]]. When the next node [[curNode]]
+is poped out, if it is not the first node on a new level, set [[prev.next =
+curNode]]. One can tell whether a node is the first node on a new level by
+counting the node, and check whether the count is of the form $2^n$, where $n$
+is the level index starting from 0.
+<<Queue definition>>=
+type (
+	  Queue struct {
+		    start, end *node
+		    length int
+  	}
+	  node struct {
+		    value interface{}
+    		next *node
+  	}
+)
+
+// Create a new queue
+func New() *Queue {
+	  return &Queue{nil,nil,0}
+}
+// Take the next item off the front of the queue
+func (this *Queue) Dequeue() interface{} {
+  	if this.length == 0 {
+  		return nil
+  	}
+  	n := this.start
+  	if this.length == 1 {
+	    	this.start = nil
+  		  this.end = nil
+	  } else {
+    		this.start = this.start.next
+  	}
+  	this.length--
+	  return n.value
+}
+// Put an item on the end of a queue
+func (this *Queue) Enqueue(value interface{}) {
+  	n := &node{value,nil}
+  	if this.length == 0 {
+    		this.start = n
+    		this.end = n		
+  	} else {
+    		this.end.next = n
+    		this.end = n
+  	}
+	  this.length++
+}
+// Return the number of items in the queue
+func (this *Queue) Len() int {
+  	return this.length
+}
+// Return the first item in the queue without removing it
+func (this *Queue) Peek() interface{} {
+	  if this.length == 0 {
+		    return nil
+	  }
+  	return this.start.value
+}
+
+<<connect function definition>>=
+func connect(root *Node) *Node {
+    if root == nil {
+        return root
+    }
+
+    q := New()
+    count := 1
+    var prev *Node = nil
+    n := 0
+
+    q.Enqueue(root);
+    for q.Len() != 0 {
+        top := q.Dequeue().(*Node)
+        if prev != nil && float64(count) != math.Pow(2, float64(n)) {
+            prev.Next = top
+        } else if float64(count) == math.Pow(2, float64(n)) {
+            n++
+        }
+        count++
+        prev = top
+        if top.Left != nil {
+            q.Enqueue(top.Left)
+        }
+        if top.Right != nil {
+            q.Enqueue(top.Right)
+        }
+    }
+
+    return root
+}
+
+
+
+We flatten a binary tree recursively, i.e. starting from a node, we first
+flatten the left subtree, then the right subtree. Once done, link the flattened
+left substree as the right child of the node, then link the flattened right
+subtree as the right child of the last node of the flattened left subtree.
+
+<<<TreeNode Definition>>=
+tyee TreeNode struct {
+    Val int
+    Left *TreeNode
+    Right *TreeNode
+}
+@ %def TreeNode
+
+<<flatten Function Definition>>=
+func flatten(root *TreeNode) {
+    if root == nil {
+        return
+    }
+    var flatten_subtree func(node *TreeNode) *TreeNode
+    flatten_subtree = func(node *TreeNode) *TreeNode {
+        if node.Left == nil && node.Right == nil {
+            return node
+        }
+        if node.Left == nil {
+            last := flatten_subtree(node.Right)
+            return last;
+        }
+        if node.Right == nil {
+            last := flatten_subtree(node.Left)
+            node.Right = node.Left
+            node.Left = nil
+            return last;
+        }
+        left_last := flatten_subtree(node.Left)
+        right_last := flatten_subtree(node.Right)
+        tmp := node.Right
+        node.Right = node.Left
+        left_last.Right = tmp
+        node.Left = nil
+        return right_last
+    }
+
+    flatten_subtree(root)
+}
+@ %def flatten
+
+

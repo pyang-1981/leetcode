@@ -1,0 +1,73 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Given an integer array nums where every element appears three times except for one, which appears exactly once. Find the single element and return it.
+
+\section{Examples}
+\subsection{Example 1}
+\fbox{
+    \begin{tabular}{l}
+        Input: [2, 2, 3, 2]\\
+        Output: 3
+    \end{tabular}
+}
+\subsection{Example 2}
+\fbox{
+    \begin{tabular}{l}
+        Input: [0, 1, 0, 1, 0, 1, 99]\\
+        Output: 99
+    \end{tabular}
+}
+
+\section{Solution}
+We can sort the array. After that it is easy to find the single number if both its predecessor and successor are different from it (if they exist). The time complexity of this solution is O(nlogn). We can reduce the complexity to O(n), if we use a hashmap to record the number of times a number appears when scanning the input array. However this solution uses extra space of order O(n).
+
+In fact we can have a solution that has a time complexity of O(n) and a space complexity of O(1).
+
+This solution is based on the following observations.
+\begin{itemize}
+\item An integer can be represented as a binary with 0s and 1s at the corresponding locations.
+\item A 1/0 bit at a specific location can only appear 3n (it is not a part of the single number) or 3n + 1 (it is a part of the single number) times.
+\item If we encounter two or more non-zero numbers which have 1 bits at the same locations, apply [[&]] (and) operator to those bits will yield 1s at those locations.
+\item If we encounter odd number of non-zero numbers which have 1 bits at the same locations, apply [[^]] (xor) operator to those bits will yield 1s at those locations.
+\end{itemize}
+
+Thus we use an integer [[ones]] to keep track of the 1 bits that appear just 3n + 1 times, and use a integer [[twos]] to keep track of 1 bits that appear twice or more times and initialize them both to 0. Since the 1 bits that appear just 3n + 1 times are the 1 bits in the single number, we have [[ones]] == the single number when the algorithm ends.
+
+When we encounter a number [[x != 0]], we do [[twos |= (ones & x)]]. For a bit in [[twos]], when encounter the [[3n]]th ($n\geq1$) [[x]] whose corresponding bit is 1, we reset the bit in [[twos]] to 0.
+
+When we encounter a number [[x != 0]], we also do [[ones ^= x]]. For a bit in [[ones]], when we encounter the [[3n]]th ($n\geq1$) [[x]] whose corresponding bit is 1, we reset the bit in [[ones]] to 0. In this way, a bit in [[ones]] is 1, if and only if corresponding 1 bit appears 3n + 1 times.
+
+But how do we know when we encounter ``the [[3n]]th'' [[x]]? Let's suppose the current [[x]] is such a [[x]].  The corresponding bits in both [[ones]] and [[twos]] will be 1, after we do [[twos |= (ones & x)]] and [[ones ^= x]]. Thus we can simply reset those bits in [[ones]] and [[twos]] to 0.
+
+Now let's consider the special case where [[x == 0]] for some [[x]]s. Supponse we have 3 such [[x]]s. Notice that both [[twos |= (ones & x)]] and [[ones ^= x]] do not change the values of [[ones]] and [[twos]] if [[x == 0]], thus we can safely ignore those [[x]]s. Suppose we only have 1 such [[x]], which is also the single number. In this case, it is easy to prove that the result [[ones]] is also 0, thus gives the correct answer.
+
+In sum, after we scanning all the [[x]]s, [[ones]] is the single number.
+
+Based on this idea, we have the following solution.
+<<Function singleNumber>>=
+func singleNumber(nums []int) int {
+    ones, twos := 0, 0
+    for _, num := range nums {
+        twos |= (ones & num)
+        ones ^= num
+        not_common := ^(twos & ones) // not_common is all 1s when num is not the 3nth.
+        twos &= not_common
+        ones &= not_common
+    }
+
+    return ones
+}
+@ %def singleNumber
+
+@
+\end{document}
+

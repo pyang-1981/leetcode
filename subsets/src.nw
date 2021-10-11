@@ -1,0 +1,334 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\noweboptions{smallcode}
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given a set of distinct integers, nums, return all possible subsets (the power set).
+
+\textbf{Note: The solution set must not contain duplicate subsets.}
+
+\subsection{Example}
+\fbox{
+    \begin{tabular}{l}
+        Input: nums = (1,2,3)\\
+        Output:\\
+        (\\
+            (3),\\
+            (1),\\
+            (2),\\
+            (1,2,3),\\
+            (1,3),\\
+            (2,3),\\
+            (1,2),\\
+            ()\\
+        )
+    \end{tabular}
+}
+
+\section{Solution}
+We use a concatenation of [[unsigned long long]] typed integers as the bitmap
+for the elements in a subset. The first bit in the bitmap corresponds to the
+first element in the set, the second bit corresponds to the second element in
+the set, etc. If the bit is 1 then the corresponding element is in the subset, 0
+otherwise.
+
+A single [[unsigned long long]] typed integer only has 64 bits, which limits the
+set size to at most 64. But a concatenation of such integers (refered to as the
+bitmap) can handle a set of any size. The number integers in the bit map is
+determined by the following equation:
+\begin{equation} \label{integer vector size}
+    int\_num = set\_size / 64 + 1 
+\end{equation}
+
+In the beginning, all the integers are initialized to 0, corresponding to the
+empty subset. We obtain the next subset by adding 1 to the first integer in the
+bitmap, and so on. If the first integer reaches the maximum value, we add 1 to
+the second interger in the bitmap and clear the first integer to obtain the next
+subset. Then we continue to add 1 to the first integer to obtain the following
+subset. In general, we find the first integer in the bitmap that does not
+reaches the maximum value, add 1 to that integer, and clear all the integers
+before it in the bitmap to obtain the next subset. This continues until all the
+integers in the bitmap reach their maximum value. Then we obtain the last
+subset.
+
+We define the following class for the bitmap:
+<<Def bitmap class>>=
+class bitmap {
+public:
+    // Initialize the bitmap given the size of
+    // the set.
+    bitmap(size_t set_size);
+
+    // Iterator over the bits in the
+    // bitmap.
+    // Dereferencing an iterator gets
+    /// integer 1 or 0. 
+    friend class bitmap_iter_t;
+    bitmap_iter_t begin() const;
+    bitmap_iter_t end() const;
+
+    // Advance to the next state of the
+    // the bitmap, i.e., corresponding to
+    // the next subset.
+    bool advance();
+private:
+    vector<unsigned long long> _integers;
+};
+@
+The class interfaces are self-explanatory, given the comments above them. We
+now discuss their implementation. The constructor initializes the integer
+vector [[_intergers]] with the number of 0 valued integers given in Equation
+\ref{integer vector size}.
+<<Def bitmap constructor>>=
+bitmap::bitmap(size_t set_size):
+    _integers(set_size / (sizeof(unsigned long long) * 8) + 1)
+{
+}
+@
+The definition of [[bitmap_iter_t]] is as follows:
+<<Def bitmap iterator class>>=
+class bitmap;
+class bitmap_iter_t {
+public:
+    // Initialize the beginning iterator
+    // for the bitmap bm.
+    bitmap_iter_t(const bitmap &bm);
+    // Initialize an end iterator.
+    bitmap_iter_t() = default;
+
+    // Dereference the iterator to
+    // obtain the value of the corresponding
+    // bit.
+    int operator*() const;
+
+    // Advance the iterator to the
+    // next bit.
+    bitmap_iter_t& operator++();
+
+    // Comparator for equality
+    friend bool
+    operator==(const bitmap_iter_t &a,
+               const bitmap_iter_t &b);
+
+private:
+    // The bitmap the iterator points to.
+    const bitmap *_bm = nullptr;
+    // The current bit index.
+    size_t _bit_idx = 0;
+};
+@
+[[bitmap_iter_t(const bitmap &bm)]] initializes a beginning iterator to the
+bitmap [[bm]]. Its definition is
+<<Def beginning bitmap iterator constructor>>=
+bitmap_iter_t::bitmap_iter_t(const bitmap &bm):_bm(&bm), _bit_idx(0)
+{
+}
+@
+[[bitmap_iter_t()]] initializes an end iterator to a bitmap. It is default
+synthesized by the compiler, i.e., [[_bm]] is set to [[nullptr]], and
+[[_bit_idx]] is set to 0. We use this special iterator (pointing to a null
+bitmap) as the end iterator.
+
+In order to dereference an iterator to obtain the value of a bit in a bitmap, we
+define the dereference operator as follows: 
+<<Def bitmap iterator dereference operator>>=
+int bitmap_iter_t::operator*() const
+{
+    size_t integer_idx = _bit_idx / (sizeof(unsigned long long) * 8);
+    size_t bit_offset = _bit_idx % (sizeof(unsigned long long) * 8);
+
+    return static_cast<int>((_bm->_integers[integer_idx] 
+             & (1ull << bit_offset)) 
+             >> bit_offset); 
+}
+@
+Note that the first two line of the dereference operator converts
+the bit index [[_bit_idx]] to the corresponding integer index
+[[integer_idx]] into the bitmap, and the bit offset [[bit_offset]]
+into that integer. For example, if the [[_bit_idx]] is 10, it
+belongs to the $10/64 = 0$th integer in the bitmap, with a offset
+of $10\%64=10$ within that integer. If the [[_bit_idx]] is 64, it
+belongs to the $64/64 = 1$th integer in the bitmap, with a offset
+of $64\%64 = 0$ within that integer. Note that ``64'' is the size
+in bits of the [[unsigned long long]] type.
+
+Once we obtain the [[integer_idx]], we can fetch the corresponding integer in
+the bitmap. In order to obtain the bit value at a certain offset within the
+integer, we first create a bit mask [[1ull << bit_offset]]. This creates a bit
+mask integer with the bit at [[bit_offset]] being 1, and the rest of the bits
+being 0. [[ull]] makes the bit mask integer of the same size with the bitmap
+integers. We then apply bitwise-and using this bit mask interger to the bitmap
+integer. The result is a modified bitmap interger with the bit at [[bit_offset]]
+unchanged, and the rest of the bits cleared (assigned with 0). We then shift the
+modified bitmap integer to the right [[bit_offset]] times. This leads to the bit
+at [[bit_offset]] being shifted to the rightmost position, and with the rest of
+the bits in the modified bitmap integer being 0. The resulting value of this
+integer is 1 if the bit at [[bit_offset]] in the original bitmap integer is 1,
+and 0 otherwise. At this time, we successfully extract the value of the bit at
+[[bit_offset]]. The final step is convert this value to [[int]] using
+[[static_cast<int>]].
+
+Next we discuss the advancement of a bitmap iterator. The main operation is to
+increase the data member [[_bit_idx]] within an iterator object by 1. 
+<<Increase bit index>>=
+this->_bit_idx++;
+@
+However, [[_bit_idx]] cannot excceed the number of bits in a bitmap. If that
+happens, we turn the iterator into an end iterator. The code is as follows:
+<<Bound check bit index>>=
+if (this->_bit_idx >=
+    _bm->_integers.size() * sizeof(unsigned long long) * 8) {
+    this->_bit_idx = 0;
+    this->_bm = nullptr;
+}
+@
+\textbf{Note that an end iterator is an iterator with [[_bit_idx]] assigned to 0, and [[_bm]] assigned to nullptr.}
+
+The advancement operator needs to return the iterator itself, we impplement it
+as follows:
+<<return the bitmap iterator itself>>=
+return *this;
+@
+With these code snippets, we define the iterator advancement operator
+[[bitmap_iter_t& operator++()]] as follows:
+<<Def bitmap iterator advancement operator>>=
+bitmap_iter_t& bitmap_iter_t::operator++()
+{
+    <<Increase bit index>>
+    <<Bound check bit index>>
+    <<return the bitmap iterator itself>>
+}
+@
+In order to compare two [[bitmap_iter_t]] variables for equality\\inequality (especially
+comparing an iterator to the end iterator), we define the following comparators:
+<<Def bitmap iterator comparators>>=
+bool
+operator==(const bitmap_iter_t &a,
+           const bitmap_iter_t &b)
+{
+    return a._bm == b._bm && a._bit_idx == b._bit_idx;
+}
+bool
+operator!=(const bitmap_iter_t &a,
+           const bitmap_iter_t &b)
+{
+    return !(a==b);
+}
+@
+With the class [[bitmap_iter_t]] completely defined, one can define
+[[bitmap_iter_t bitmap::begin() const]] as follows:
+<<Def bitmap begin method>>=
+bitmap_iter_t bitmap::begin() const
+{
+    // If the bitmap is empty return the
+    // end iterator instead.
+    if (_integers.size() == 0) {
+        return bitmap_iter_t();
+    }
+    return bitmap_iter_t(*this);
+}
+@
+And define [[bitmap_iter_t bitmap::end() const]] as:
+<<Def bitmap end method>>=
+bitmap_iter_t bitmap::end() const
+{
+    return bitmap_iter_t();
+}
+@
+The most critical method of a bitmap is [[bool bitmap::advance()]]. It advances
+a bitmap so that it can generate the next subset. According to the prevous
+discussion, we define it as follows:
+<<Def bitmap advance method>>=
+bool bitmap::advance()
+{
+    // Find the first integer in the bitmap
+    // that does not reach its maximum value.
+    int i = 0;
+    for (;i < _integers.size(); i++) {
+        if (_integers[i] !=
+            numeric_limits<unsigned long long>::max()) {
+            break;
+        }
+    }
+
+    if (i == _integers.size()) {
+        // If all the integers reach their maximum value
+        // return false to indicate that the advancment
+        // cannot go further.
+        return false;
+    } else {
+        // Add 1 to the first integer that does not
+        // reache its maximum value.
+        _integers[i] += 1;
+        // Clear all the integers before it.
+        for (int j = 0; j < i; j++) {
+            _integers[j] = 0;
+        }
+        // Return true to indicate the advancement
+        // is successful.
+        return true;
+    }
+}
+@
+Putting everything together:
+<<*>>=
+#include<iostream>
+#include<cmath>
+#include<limits>
+#include<vector>
+
+using namespace std;
+
+<<Def bitmap iterator class>>
+
+<<Def bitmap class>>
+<<Def bitmap constructor>>
+<<Def bitmap begin method>>
+<<Def bitmap end method>>
+<<Def bitmap advance method>>
+
+<<Def beginning bitmap iterator constructor>>
+<<Def bitmap iterator dereference operator>>
+<<Def bitmap iterator advancement operator>>
+<<Def bitmap iterator comparators>>
+
+class Solution {
+public:
+    vector<vector<int>> subsets(const vector<int>& nums) {
+        vector<vector<int>> res;
+        bitmap m(nums.size());
+        int times = 0;
+        while(true) {
+            int index = 0;
+            vector<int> subset;
+            cout << times << ":";
+            for (auto it = m.begin(); it != m.end(); ++it) {
+                if (*it) {
+                    subset.push_back(nums[index]);                    
+                    cout << nums[index] << " ";
+                }
+                ++index;
+                if (index >= nums.size()) {
+                    break;
+                }
+            }
+            res.push_back(subset);
+            ++times;
+            cout << endl;
+            if (!m.advance() || times >= pow(2, nums.size())) {
+                break;
+            }
+        }
+        return res;   
+    }
+};
+
+int main()
+{
+    Solution().subsets({1,2,3,4,5,6,7,8,10,0});
+    return 0;
+}

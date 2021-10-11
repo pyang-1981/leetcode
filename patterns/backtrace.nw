@@ -1,0 +1,130 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Design a general framework for backtracing pattern. The backtracing pattern is a
+trial-and-error pattern that tries to explore the whole solution space.
+
+\section{Pattern}
+Backtracing can be done by using a stack which stores the steps in the solution
+space we have explored at the moment. For a possible next step, we push it onto
+the stack, and continue exploration. If all possible next steps from the current
+step are explored, we
+pop the current step from the stack, and try to explore a next step from the
+step currently at the top of the stack after the pop.
+
+Backtracing is best explained by an analogy to exploring a maze.
+
+One key component of the backtracing is that every step on the stack is
+associated with a state. Let's suppose the current step on the top of the stack
+is \textbf{A}, and the state associated with it is \textbf{$state_A$}. This
+state may be changed after we choose a possible next step \textbf{B} to
+\textbf{$'state_A$}. After we  push the new step \textbf{B} onto the stack, we
+create a new state \textbf{$state_B$} associated with step \textbf{B}. Now we have
+state \textbf{$'state_A$} associated with step \textbf{A} and state
+\textbf{$state_B$} associated with step \textbf{B}, with state
+\textbf{$state_B$} being the current state. After we finish exploring
+all the steps from step \textbf{B}, we backtrace to step \textbf{A}, and the
+state \textbf{$'state_A$} should be restored to the current state.
+
+For example, when exploring a maze, we want to maintain the number of meters we
+have taken so far. For intersection \textbf{A}, this value is stored in the state
+\textbf{$state_A$}. After we push intersection \textbf{B} on to the stack, we create
+state \textbf{$state_B$} which stores the meters we take to reach \textbf{B}.
+This value is calculated from state \textbf{$state_A$} plus the meters we take
+from intersection \textbf{A} to intersection \textbf{B}. Note that in this case,
+we don't change state \textbf{$state_A$} to state \textbf{$'state_A$}.
+Also please note that not every backtracing problem needs a state associated with
+a step.
+
+<<backtracing>>=
+#include <functional>
+#include <optional>
+#include <queue>
+#include <stack>
+#include <tuple>
+#include <unordered_set>
+
+enum class Action {
+  CONTINUE,
+  TERMINATE
+};
+
+template <class StepType, class Hash = std::hash<StepType>, class KeyEqual =
+std::equal_to<StepType>, int SIZE=1000>
+class DFSBacktracing
+{
+public:
+  using StepFunc = std::function<std::optional<StepType>(const StepType
+  &curStep, Action &act)>;
+  DFSBacktracing(const StepFunc &func): _stepFunc(func), _visited(SIZE) {}  
+  
+  void Run(const StepType &init_step)
+  {
+    _stepStack.push(init_step);
+
+    while(!_stepStack.empty()) {
+      Action act = Action::CONTINUE;
+      auto next = _stepFunc(_stepStack.top(), act);
+      _visited.insert(_stepStack.top());
+      if (act == Action::TERMINATE) break;
+      if (!next) { _visited.erase(_stepStack.top());  _stepStack.pop(); continue; }
+      if (_visited.find(*next) != _visited.end()) continue;
+      _stepStack.push(*next);
+    }
+  }
+
+private:
+  StepFunc                                     _stepFunc;
+  std::stack<StepType>                         _stepStack;
+  std::unordered_set<StepType, Hash, KeyEqual> _visited;
+};
+
+@
+The above algorithm uses DFS (depth first search) to search the
+solution space. Another way is to use BFS (Breath first search) to search the
+solution space. Compare to DFS, BFS is slower to find one solution, but is able
+to find the solution with the minimum steps.
+<<backtracing>>=
+template <class StepType, class Hash = std::hash<StepType>, class KeyEqual =
+std::equal_to<StepType>, int SIZE=1000>
+class BFSBacktracing
+{
+public:
+  using StepFunc = std::function<std::optional<vector<StepType>>\
+                       (const StepType &curStep, Action &act)>;
+  BFSBacktracing(const StepFunc &func): _stepFunc(func), _visited(SIZE) {}  
+
+  void Run(const StepType &init_step)
+  {
+    _stepQ.push(init_step);
+
+    while(!_stepQ.empty()) {
+      Action act = CONTINUE;
+      auto next = _stepFunc(, _stepQ.front(), act);
+      _visited.insert(_stepQ.front());
+      if (act == Action::TERMINATE) break;
+      if (!next) { _visited.erase(_stepQ.front()); _stepQ.pop(); continue; }
+      for (const auto &step : *next) {
+        if (_visited.find(step) != _visited.end()) continue;
+        _stepQ.push(step);
+      }
+    }
+  }
+
+private:
+  StepFunc                                     _stepFunc;
+  std::queue<StepType>                         _stepQ;
+  std::unordered_set<StepType, Hash, KeyEqual> _visited;
+};
+
+@
+\end{document}
+

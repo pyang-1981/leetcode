@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Scan every element in a two dimensional array.
+
+
+\section{Pattern}
+\subsection{Row-based scan}
+\subsection{Column-based scan}
+\subsection{Circle-based scan}
+The circle-based scan treat a two dimensional array as layers of circles. You
+task is to scan a circle clockwise (or counterclockwise) one step at a time.
+
+A circle in a two dimensional array can be identified by coordinate of its
+top-left corner and the coordinate of its bottom-right corner. Let's denote the
+coordinate of the top-left corner by two indices x, y, and denote the coordinate
+of the bottom-right corner by two indices m, n.  A clockwise scan is
+
+<<clockwise scan>>=
+// Top edge
+for (int i = y; i <= n; i++) {
+    // scan a[x][i]
+}
+// Right edge 
+for (int i = x + 1; i <= m; i++) {
+    // scan a[i][n]
+}
+// Bottom edge
+for (int i = n - 1; i >= y; i--) {
+    // scan a[m][i]
+}
+// Left edge
+for (int i = m - 1; i >= x - 1; i--) {
+    // scan a[i][y]
+}
+@
+Counter-clockwise scan can be done similarly. This pattern is usually used in
+problems such as transpose a two dimensional array in-place.
+
+@
+\end{document}
+

@@ -1,0 +1,92 @@
+%\usepackage{fancybox}
+%\usepackage{amsmath}
+
+\noweboptions{smallcode}
+\makeatletter
+\def\idxexample#1{\nwix@id@uses#1}
+\makeatother
+
+\section{Problem description}
+Given n, how many structurally unique BST's (binary search trees) that store values 1 ... n?
+
+Example:
+\begin{verbatim}
+Input: 3
+Output: 5
+Explanation:
+Given n = 3, there are a total of 5 unique BST's:
+
+   1         3     3      2      1
+    \       /     /      / \      \
+     3     2     1      1   3      2
+    /     /       \                 \
+   2     1         2                 3
+\end{verbatim}
+
+\section{Solution}
+Let $f(r, s)$ represent the number of unique BSTs rooted at $r$, which
+stores the numbers in the set $s$. This function can be defined recursively as
+\begin{equation}
+f(r, s) = \begin{cases}
+          \sum_{i \in p}f(i, p) \times \sum_{i \in q}f(i, q) & p \neq \{\}, q
+          \neq \{\}\\
+          \sum_{i \in p}f(i, p) & p \neq \{\}, q = \{\}\\
+          \sum_{i \in q}f(i, q) & p = \{\}, q \neq \{\}
+          \end{cases}
+\end{equation}
+where $p$ is the set of numbers smaller than $r$ and $q$ is the set of numbers
+bigger than $r$.
+
+\subsection{Boundary condition}
+$f(i, \{i\}) = 1$ and $f(nil, \{\}) = 0$
+
+\subsection{Total number}
+Let $f(s)$ represent the total number of unique BSTs storing the numbers in the
+set $s$.
+\begin{equation}
+f(s) = \sum_{i\in s}f(i, s)
+\end{equation}
+
+\subsection{Implementation}
+<<Define f(r, s) function>>=
+func numOfBSTsAtRoot(r int, s []int) int {
+    if len(s) == 1 {
+        return 1
+    }
+
+    if len(s) == 0 {
+        return 0
+    }
+
+    offset := r - s[0]
+    left, right := 0, 0
+    
+    for _, v := range s[0:offset] {
+        left += numOfBSTsAtRoot(v, s[0:offset])
+    }
+    for _, v := range s[offset+1:] {
+        right += numOfBSTsAtRoot(v, s[offset+1:])
+    }
+
+    if left == 0 {
+        return right
+    } else if right == 0 {
+        return left
+    } else {
+        return left * right
+    }
+}
+<<Define f(s) function>>=
+func numOfBSTs(n int) int {
+    s := make([]int, n)
+    for v := range s {
+        s[v] = v + 1
+    }
+
+    res := 0
+    for _, v := range s {
+        res += numOfBSTsAtRoot(v, s)
+    }
+
+    return res
+}

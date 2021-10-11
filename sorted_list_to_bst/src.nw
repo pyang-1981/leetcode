@@ -1,0 +1,103 @@
+\noweboptions{smallcode}
+\noweboptions{longxref}
+
+\section{Problem description}
+Given a singly linked list where elements are sorted in ascending order, convert it to a height balanced BST.
+For this problem, a height-balanced binary tree is defined as a binary tree in which the depth of the two subtrees of every node never differ by more than 1.
+
+\subsection{Example}
+Given the sorted linked list: [-10,-3,0,5,9], one possible answer is: [0,-3,9,-10,null,5], which represents the following height balanced BST:
+\begin{verbatim}
+      0
+     / \
+   -3   9
+   /   /
+ -10  5
+\end{verbatim}
+
+\section{Solution}
+Find the middle element in the list, use this element as the root. All the
+elements to the left form the left subtree, and all the elements to the right
+form the right subtree. Recursively, do the same for the left and right
+substrees.
+
+\subsection{List node structure and tree node structure}
+<<Define list node structure>>=
+type ListNode struct {
+  Val int
+  Next *ListNode
+}
+<<Define tree node structure>>=
+type TreeNode struct {
+  Val int
+  Left *TreeNode
+  Right *TreeNode
+}
+
+@
+\subsection{Algorithm Implementation}
+In order to find the middle element in a list, we need to know the list length.
+<<Define list length function>>=
+func (head *ListNode) len() int {
+    len := 0
+    
+    for head != nil {
+        len += 1
+        head = head.Next
+    }
+
+    return len
+}
+@ Next we define the function that advance a pointer to a list node by [[n]]
+steps.
+<<Define pointer advance function>>=
+func advance(ptr *ListNode, n int) *ListNode {
+    for ; n > 0; n-- {
+        ptr = ptr.Next
+    }
+
+    return ptr
+}
+@ Using these two functions, one can find the pointer to the middle element of a
+list.
+<<Define middle element access function>>=
+func (head *ListNode) middle() (*ListNode, *ListNode) {
+    mid := head.len() / 2
+    if mid - 1 >= 0 {
+        prev := advance(head, mid - 1)
+        pmid := prev.Next
+        return pmid, prev
+    } else {
+        return head, nil
+    }
+}
+@ Note that the above function returns two pointers, the first is the one
+pointing to the middle element, and the second one is the pointer previous to
+the middle element. Now we define the following function to build the
+BST recursively.
+<<Define sorted list to BST function>>=
+func sortedListToBST(head *ListNode) *TreeNode {
+    if head == nil {
+        return nil
+    }
+
+    mid, prev := head.middle()
+    
+    if prev == nil {
+        return &TreeNode{Val: mid.Val, Right: nil, Left: nil}
+    }
+
+    prev.Next = nil
+    left := sortedListToBST(head)
+    right := sortedListToBST(mid.Next)
+    root := &TreeNode{Val: mid.Val, Right: right, Left: left}
+
+    return root
+}
+<<*>>=
+<<Define list node structure>>
+<<Define tree node structure>>
+<<Define list length function>>
+<<Define pointer advance function>>
+<<Define middle element access function>>
+<<Define sorted list to BST function>>
