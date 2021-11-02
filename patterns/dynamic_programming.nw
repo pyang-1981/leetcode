@@ -17,10 +17,12 @@ Use dynamic programming to solve certain problems.
 #include <utility>
 
 template <class SubProblemType, class SolverType,
-          class Hash = std::hash<SubProblemType>, int SIZE = 10000>
+          class Hash = std::hash<SubProblemType>,
+          class KeyEqual = std::equal_to<SubProblemType>, int SIZE = 10000>
 class DynamicProgramming {
-public:
-  using DPType = DynamicProgramming<SubProblemType, SolverType, Hash, SIZE>;
+ public:
+  using DPType =
+      DynamicProgramming<SubProblemType, SolverType, Hash, KeyEqual, SIZE>;
   using RetType = decltype(SolverType()(std::declval<SubProblemType>()));
 
   friend struct WrapperSolver;
@@ -46,9 +48,9 @@ public:
     return WrapperSolver(*this, _solver)(prob);
   }
 
-private:
+ private:
   SolverType _solver;
-  std::unordered_map<SubProblemType, RetType, Hash> _cache;
+  std::unordered_map<SubProblemType, RetType, Hash, KeyEqual> _cache;
 };
 
 \section{Example}

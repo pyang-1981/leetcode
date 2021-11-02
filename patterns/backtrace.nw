@@ -62,7 +62,7 @@ std::equal_to<StepType>, int SIZE=1000>
 class DFSBacktracing
 {
 public:
-  using StepFunc = std::function<std::optional<StepType>(const StepType
+  using StepFunc = std::function<std::optional<StepType>(StepType
   &curStep, Action &act)>;
   DFSBacktracing(const StepFunc &func): _stepFunc(func), _visited(SIZE) {}  
   
@@ -99,7 +99,7 @@ class BFSBacktracing
 {
 public:
   using StepFunc = std::function<std::optional<vector<StepType>>\
-                       (const StepType &curStep, Action &act)>;
+                       (StepType &curStep, Action &act)>;
   BFSBacktracing(const StepFunc &func): _stepFunc(func), _visited(SIZE) {}  
 
   void Run(const StepType &init_step)
@@ -124,6 +124,148 @@ private:
   std::queue<StepType>                         _stepQ;
   std::unordered_set<StepType, Hash, KeyEqual> _visited;
 };
+
+@
+\section{Example}
+Sudoku solver. 
+
+<<example>>=
+class Solution {
+ public:
+  enum DIRECTION { UP, RIGHT, DOWN, LEFT, NONE };
+
+  struct Step {
+    int i, j;
+
+    DIRECTION dir;
+    vector<bool> conflicts;
+    bool firstEncounter;
+    bool fixed;
+  };
+
+  struct StepHash {
+    size_t operator()(const Step &step) const {
+      return std::hash<string>()(to_string(step.i) + "-" + to_string(step.j));
+    }
+  };
+
+  struct StepEqual {
+    bool operator()(const Step &step1, const Step &step2) const {
+      return step1.i == step2.i && step1.j == step2.j;
+    }
+  };
+
+  DIRECTION nextDir(int i, int j, DIRECTION preDir, int nrows, int ncols) {
+    if (j == ncols - 1 && i < nrows - 1 && preDir == DIRECTION::RIGHT) {
+      return DIRECTION::DOWN;
+    } else if (j == ncols - 1 && preDir == DIRECTION::DOWN) {
+      return DIRECTION::LEFT;
+    } else if (j == 0 && preDir == DIRECTION::LEFT && i < nrows - 1) {
+      return DIRECTION::DOWN;
+    } else if (j == 0 && preDir == DIRECTION::DOWN) {
+      return DIRECTION::RIGHT;
+    } else if (j < ncols - 1 && preDir == DIRECTION::RIGHT) {
+      return DIRECTION::RIGHT;
+    } else if (j > 0 && preDir == DIRECTION::LEFT) {
+      return DIRECTION::LEFT;
+    }
+    return DIRECTION::NONE;
+  }
+
+  void solveSudoku(vector<vector<int>> &board) {
+    int nrows = board.size();
+    int ncols = board[0].size();
+
+    auto stepFunc = [&](Step &curStep, Action &act) {
+      if (curStep.firstEncounter) {
+        curStep.firstEncounter = false;
+        if (board[curStep.i][curStep.j] == 0) {
+          curStep.fixed = false;
+          for (int j = 0; j < ncols; j++) {
+            curStep.conflicts[board[curStep.i][j]] = true;
+          }
+          for (int i = 0; i < nrows; i++) {
+            curStep.conflicts[board[i][curStep.j]] = true;
+          }
+          int corneri = curStep.i / 3 * 3;
+          int cornerj = curStep.j / 3 * 3;
+          for (int i = corneri; i < corneri + 3; i++) {
+            for (int j = cornerj; j < cornerj + 3; j++) {
+              curStep.conflicts[board[i][j]] = true;
+            }
+          }
+        } else {
+          curStep.fixed = true;
+        }
+      } else {
+        if (curStep.fixed) {
+          return optional<Step>();
+        }
+      }
+
+      if (!curStep.fixed) {
+        bool updated = false;
+        for (int i = 1; i < curStep.conflicts.size(); i++) {
+          if (curStep.conflicts[i] == false) {
+            board[curStep.i][curStep.j] = i;
+            curStep.conflicts[i] = true;
+            updated = true;
+            break;
+          }
+        }
+        if (!updated) {
+          board[curStep.i][curStep.j] = 0;
+          return optional<Step>();
+        }
+      }
+
+      if (curStep.dir == DIRECTION::NONE) {
+        act = Action::TERMINATE;
+        return optional<Step>();
+      }
+
+      int nexti, nextj;
+      if (curStep.dir == DIRECTION::LEFT) {
+        nexti = curStep.i;
+        nextj = curStep.j - 1;
+      } else if (curStep.dir == DIRECTION::DOWN) {
+        nexti = curStep.i + 1;
+        nextj = curStep.j;
+      } else if (curStep.dir == DIRECTION::RIGHT) {
+        nexti = curStep.i;
+        nextj = curStep.j + 1;
+      }
+      DIRECTION nDir;
+      Step nextStep = {nexti,
+                       nextj,
+                       nDir = nextDir(nexti, nextj, curStep.dir, nrows, ncols),
+                       vector<bool>(10),
+                       true,
+                       false};
+      return optional<Step>(std::move(nextStep));
+    };
+
+    DFSBacktracing<Step, StepHash, StepEqual> dfs(stepFunc);
+    dfs.Run({0, 0, DIRECTION::RIGHT, vector<bool>(10), true, false});
+  }
+};
+
+int main() {
+  vector<vector<int>> board = {
+      {5, 3, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0},
+      {0, 9, 8, 0, 0, 0, 0, 6, 0}, {8, 0, 0, 0, 6, 0, 0, 0, 3},
+      {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+      {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5},
+      {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+  Solution().solveSudoku(board);
+
+  for (const auto &vec : board) {
+    for (auto n : vec) {
+      cout << n << ", ";
+    }
+    cout << endl;
+  }
+}
 
 @
 \end{document}
