@@ -1,0 +1,44 @@
+\documentclass{article}
+\usepackage{noweb}
+\noweboptions{smallcode}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancybox}
+\pagestyle{noweb}
+\begin{document}
+@
+
+\section{Problem description}
+Split a string into tokens separated by a certain delimiter.
+
+\section{Pattern}
+<<string_split>>=
+#include <string>
+#include <vector>
+
+using namespace std;
+
+vector<string> split(const string &s, const string &delimiter) {
+  vector<string> res;
+  string::size_type  start = 0;
+  while(true) {
+    auto pos = s.find(delimiter, start);
+    if (pos != string::npos && pos > start) {
+      res.push_back(string(s, start, pos - start));
+    }
+    if (pos == string::npos) {
+      if (s.size() - start > 0) res.push_back(string(s, start, s.size() - start));
+      return res;
+    }
+    start = pos + 1;
+  }
+
+  return res;
+}
+@ %def split
+
+
+
+@
+\end{document}
+
